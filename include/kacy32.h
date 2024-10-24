@@ -21,13 +21,13 @@
 // short f16_sub(short a,short b);
 // short f16_mul(short a,short b);
 
-float kacy_f32_main(float* a, float* b, float sum,
+double kacy_f32_main(float* a, float* b, float sum,
                     short size,
                     short tangram,
                     short preb,
                     short offset);
 
-float kacy_fp32_mult(uint32_t a, uint32_t b, short mode, short cut);
+double kacy_fp32_mult(uint32_t a, uint32_t b, short mode, short cut);
 
 void da_sample_bc(int);
 void da_sample_bin(int);

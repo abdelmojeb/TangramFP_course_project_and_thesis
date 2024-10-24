@@ -173,7 +173,7 @@ uint64_t kacy_mul_core_1_X_Y(uint32_t u, uint32_t v, short mode, short cut) {
     KACY_PANIC("Bang.")
 }
 
-float kacy_fp32_mult(uint32_t a, uint32_t b, short mode, short cut) {
+double kacy_fp32_mult(uint32_t a, uint32_t b, short mode, short cut) {
     // Do only one time of alignment
     union {
         uint64_t i;
@@ -219,13 +219,14 @@ float kacy_fp32_mult(uint32_t a, uint32_t b, short mode, short cut) {
 
     PRINT2("ab_exp", ab_exp, "av_v", ab_v);
 
+    //converter_64.i = ((sign_ab << 32) | (ab_exp << 52) | (ab_v & 0xFFFFFFFFFFFFF));
+    //converter_32.i = double_to_float(converter_64.f);
     converter_64.i = ((sign_ab << 32) | (ab_exp << 52) | (ab_v & 0xFFFFFFFFFFFFF));
-    converter_32.i = double_to_float(converter_64.f);
-    return converter_32.f;
+    return converter_64.f;
 }
 
 
-float kacy_f32_main(float* _a, float* _b, float _sum, short size,
+double kacy_f32_main(float* _a, float* _b, float _sum, short size,
                     short tangram,  /* 0x10 */
                     short preb,     /* 5 */
                     short offset) { /* 0 */
@@ -324,7 +325,7 @@ float kacy_f32_main(float* _a, float* _b, float _sum, short size,
 
     short thrd_1 = preb + offset;
     short thrd_2 = MAN_FULL;
-    float c = 0.0;
+    double c = 0.0;
 
     for (int i=0;  i<size; i++) {
 

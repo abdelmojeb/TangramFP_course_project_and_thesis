@@ -195,7 +195,7 @@ int main(int argc, char **argv){
         // 5, play with exp
         float x = -0.000121951104;//0.20214844;
         float y = -0.5;
-        float result = 0.0;
+        double result = 0.0;
 
         printf("a: %f, b: %4f, sum: %4f \n", x, y, result);
 
