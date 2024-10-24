@@ -1,0 +1,28 @@
+{
+    "C_Cpp.errorSquiggles": "enabled",
+    "makefile.makefilePath": "./c_src/makefile",
+    "makefile.launchConfigurations": [
+      {
+        "cwd": "$../c_src",
+        "binaryPath": "../c_src/main",
+        "binaryArgs": []
+      },
+      {
+        "cwd": "c:\\Users\\mujeeb\\Documents\\SEMESTER3\\advanced topics in embedded systems\\mojeb-fp32",
+        "binaryPath": "c:\\Users\\mujeeb\\Documents\\SEMESTER3\\advanced topics in embedded systems\\mojeb-fp32\\main",
+        "binaryArgs": []
+      },
+      {
+        "cwd": "c:\\Users\\mujeeb\\Documents\\SEMESTER3\\advanced topics in embedded systems\\mojeb-fp32",
+        "binaryPath": "c:\\Users\\mujeeb\\Documents\\SEMESTER3\\advanced topics in embedded systems\\mojeb-fp32\\main.exe",
+        "binaryArgs": []
+      }
+    ],
+    "makefile.configureAfterCommand": true,
+    "makefile.makePath": "make",
+    "makefile.extensionLog": "c_src/",
+    "files.associations": {
+      "compare": "gcc"
+    },
+    "C_Cpp.default.compilerPath": "C:\\msys64\\ucrt64\\bin\\gcc.exe"
+}

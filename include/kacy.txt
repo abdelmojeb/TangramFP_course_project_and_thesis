@@ -10,7 +10,7 @@
 #define IS_INVALID(x) (((x)&EXP_MASK) == EXP_MASK)
 #define IS_NAN(x) (((x) & NAN_VALUE) > EXP_MASK)
 #define IS_INF(x) (((x) & NAN_VALUE) == EXP_MASK)
-#define MANTISSA(x) (((x) & 0x3FF) | (((x) & EXP_MASK) == 0 ? 0 : 0x400))
+#define MANTISSA(x) (((x) & 0x03FF) | (((x) & EXP_MASK) == 0 ? 0 : 0x400))
 #define EXPONENT(x) (((x) & EXP_MASK) >> 10)
 #define SIGNED_INF_VALUE(x) ((x & SIGN_MASK) | EXP_MASK)
 #define IS_SUBNORMAL(x) ((EXPONENT(x) == 0) && (MANTISSA(x) != 0))
@@ -33,3 +33,6 @@ void da_sample_bin(int);
 void da_dump();
 
 #endif
+// defining short words for unsigned short and unsigned int
+typedef unsigned int uint;
+typedef unsigned short ushort;

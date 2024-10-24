@@ -47,12 +47,17 @@
 
 
 
-#include "kacy.h"
+//#include "../include/kacy.h"
+#include "../include/kacy32.h"
 #include <stdio.h>
 #include <wmmintrin.h>
 #include <stdint.h>
 #include <inttypes.h>
-
+// extern float half_to_float(const ushort);
+// extern ushort float_to_half(const float);
+//extern double float_to_double(const ushort32);
+double as_double(const uint64 x) ;
+ushort32 double_to_float(double x);
 uint32_t clmul64(uint32_t a, uint32_t b) {
     __m128i xmm_a = _mm_cvtsi64_si128(a);
     __m128i xmm_b = _mm_cvtsi64_si128(b);
@@ -72,7 +77,7 @@ int main(int argc, char **argv){
     int _branch = atoi(argv[1]);
     uint16_t a;
     uint16_t b;
-    uint16_t res;
+    uint32_t res;
 
     switch(_branch){
 
@@ -147,17 +152,56 @@ int main(int argc, char **argv){
         /* } */
         /* break; */
 
-    case 5:
+     case 5:
+        // // 5, play with exp
+        // float aa = -0.000121951104;//0.20214844;
+        // float bb = -0.5;
+        // float rres = 0.0;
+
+        // printf("a: %f, b: %4f, sum: %4f \n", aa, bb, rres);
+
+        // rres = kacy_f16_main(&aa, &bb, rres, 1, 0x10, 5, 0);
+
+        // printf("res: %.12f \n", rres);
+        // break;
+    case 6:
+        // float af = 5.96046447e-08;//0.000060975552;
+        // float rsal1;
+        // float rsal2;
+        // ushort a_s;
+        // ushort32 U = (ushort32)0x7FFFFF;
+
+        // rsal1 = half_to_float((ushort)0x001);
+        // printf("half to float: %.24f \n", rsal1);
+
+        // rsal2 = half_to_float((ushort)0x02);//3ff
+        // printf("half to float: %.24f \n", rsal2);
+
+        // a_s =  float_to_half(0.000000029802322);
+        // printf("float to half max subnormal 16: %#016llx \n", a_s);
+        // a_s =  float_to_half(rsal1);
+        // printf("float to half min subnormal 16: %#016llx \n", a_s);
+        
+        // _Float16 half_precision_number = 5.9604644775390625e-8; // Closest approximation
+        // printf("Half precision float: %.24f\n", (float)half_precision_number);
+
+        // printf("size of uint64 %d, ushort32 %d\n", sizeof(uint64), sizeof(ushort32));
+        //double R =  float_to_double(U);
+        //printf(" result: %.18e\nexpected %.18e", R, as_double(0x380fffffc0000000));
+        // ushort32 R =  double_to_float(4.4028234664e38);
+        // printf(" result: %#016lx", R);
+        // break;
+    case 7:
         // 5, play with exp
-        float aa = -0.20214844;
-        float bb = -0.5;
-        float rres = 0.0;
+        float x = -0.000121951104;//0.20214844;
+        float y = -0.5;
+        float result = 0.0;
 
-        printf("a: %f, b: %f, sum: %f \n", aa, bb, rres);
+        printf("a: %f, b: %4f, sum: %4f \n", x, y, result);
 
-        rres = kacy_f16_main(&aa, &bb, rres, 1, 0x10, 5, 0);
+        result = kacy_f32_main(&x, &y, result, 1, 0x10, 11, 0);
 
-        printf("res: %f \n", rres);
+        printf("res: %.12f \n", result);
         break;
     }
     return 0;

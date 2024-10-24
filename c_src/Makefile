@@ -2,7 +2,7 @@
 CONFIG  := -DCONFIG_5 # for XORMUL
 CC      := gcc
 
-SRC     := ./
+SRC     := ./c_src
 OBJ     := kacy16.so
 EXE     := main
 RELEASE_FLAG := -mpclmul -msse2 -O3 -g
@@ -29,7 +29,7 @@ $(EXE): $(SRC)/*.c $(INCLUDE)/profiler.h
 
 $(DEBUG_RUN): CFLAGS=$(DEBUG_FLAG)
 $(DEBUG_RUN): $(SRC)/*.c
-	$(CC) $(CONFIG) $(CFLAGS) -I $(INCLUDE) $^ -o main
-	gdb -x gdbcmd --args ./main 5
+	$(CC) $(CONFIG) $(CFLAGS) -I $(INCLUDE) $^ -o ./c_src/main.exe
+	gdb  --args ./c_src/main.exe 5
 
 .PHONY: all clean debug

@@ -182,6 +182,7 @@ float kacy_fp16_mult(short a, short b, short mode, short cut) {
 
     ushort am = MANTISSA(a);
     ushort bm = MANTISSA(b);
+    printf("a=%#04x, b=%#04x, am=%#04x, bm=%#04x \n", a, b, am, bm);
 
     uint32_t ab_v = 0;
 
