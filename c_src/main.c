@@ -53,6 +53,9 @@
 #include <wmmintrin.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <time.h>
+#include <math.h>
+#include "../include/test.h"
 // extern float half_to_float(const ushort);
 // extern ushort float_to_half(const float);
 //extern double float_to_double(const ushort32);
@@ -67,6 +70,20 @@ uint32_t clmul64(uint32_t a, uint32_t b) {
     uint64_t result;
     _mm_store_si128((__m128i*)&result, xmm_result);
 
+    return result;
+}
+// Function to generate a random double between min and max
+double random_double(double min, double max) {
+    double scale = rand() / (double) RAND_MAX;
+    return min + scale * (max - min);
+}
+
+// Function to calculate dot product of two vectors
+double dot_product(const double* v1, const double* v2, size_t size) {
+    double result = 0.0;
+    for (size_t i = 0; i < size; i++) {
+        result += v1[i] * v2[i];
+    }
     return result;
 }
 
@@ -165,6 +182,11 @@ int main(int argc, char **argv){
         // printf("res: %.12f \n", rres);
         // break;
     case 6:
+        union {
+            float f;
+            uint32_t i;
+        } converter;
+        
         // float af = 5.96046447e-08;//0.000060975552;
         // float rsal1;
         // float rsal2;
@@ -188,22 +210,96 @@ int main(int argc, char **argv){
         // printf("size of uint64 %d, ushort32 %d\n", sizeof(uint64), sizeof(ushort32));
         //double R =  float_to_double(U);
         //printf(" result: %.18e\nexpected %.18e", R, as_double(0x380fffffc0000000));
-        // ushort32 R =  double_to_float(4.4028234664e38);
-        // printf(" result: %#016lx", R);
-        // break;
+        converter.i =  double_to_float(0.6512984642e-45);
+        printf(" result: %#016lx, float result : %18e", converter.i, converter.f);
+         break;
     case 7:
         // 5, play with exp
-        float x = -0.000121951104;//0.20214844;
-        float y = -0.5;
-        double result = 0.0;
+        // float x = -0.000121951104;//0.20214844;
+        // float y = -0.5;
+        // double result = 0.0;
 
-        printf("a: %f, b: %4f, sum: %4f \n", x, y, result);
+        // printf("a: %f, b: %4f, sum: %4f \n", x, y, result);
 
-        result = kacy_f32_main(&x, &y, result, 1, 0x10, 11, 0);
+        // result = kacy_f32_main(&x, &y, result, 1, 0x10, 11, 0);
 
-        printf("res: %.12f \n", result);
-        break;
+        // printf("res: %.12f \n", result);
+        // printf("cast down %#016llx \n", (ushort32)0x000FFFFFF0000000);
+        // break;
+    
+    case 8:
+    union {
+            double f;
+            uint64_t i;
+        } result;
+    union {
+            float f;
+            uint32_t i;
+        } converter1;
+    union {
+            float f;
+            uint32_t i;
+        } converter2;
+    
+    
+     srand(time(NULL));
+    
+    // Vector size
+    const size_t SIZE = 1000;
+    
+    // Allocate memory for vectors
+    // double* vector1 = (double*)malloc(SIZE * sizeof(double));
+    // double* vector2 = (double*)malloc(SIZE * sizeof(double));
+    
+    // if (vector1 == NULL || vector2 == NULL) {
+    //     printf("Memory allocation failed!\n");
+    //     free(vector1);
+    //     free(vector2);
+    //     return 1;
+    // }
+    float diff = 0.0;
+    double sum_diff=0.0;
+    double vector1;
+    double vector2;
+    ushort32 u;
+    ushort32 v;
+    // Fill vectors with random doubles between -10 and 10
+    
+    for (size_t i = 0; i < SIZE; i++) {
+        converter1.f = ldexpf(pow(2,25)-1,(uint32_t)((rand() / (float)RAND_MAX) * 253 - 150));//ldexpf(1.0 + (rand() / (float)RAND_MAX), 127);//
+        converter2.f = ldexpf(pow(2,25)-1,(uint32_t)((rand() / (float)RAND_MAX) * 253 - 150));
+        //u =  double_to_float(vector1);
+        //v = double_to_float(vector2);
+        result.f =  kacy_fp32_mult(converter1.i, converter2.i, 0x11, 11) ;
+        //printf("actual: %.18e, expected: %.18e \n ", result.f, converter1.f*converter2.f);
+       // printf("v1: %.18e ,v2 : %.18e\nrand %d\n",converter1.f,converter2.f,(uint32_t)((rand() / (float)RAND_MAX) * 253 - 149));
+        converter.i = double_to_float(result.f);
+        diff = converter.f - (converter1.f * converter2.f);
+        sum_diff=+diff;
     }
+    printf("\n");
+    printf("average diff: %.32f \n", diff / SIZE);
+    // Calculate and print dot product
+    //printf("EXPECTED product: %18.18e\n", result_exp);
+    
+
+
+    printf("Running MAC unit tests...\n");
+    run_mac_tests(1);
+    
+    break;
+    case 9:
+        run_mac_tests(1000000);
+        int min =49;
+        int max = 254;
+        uint8_t s;
+        // for(int i = 0; i < 100; i++){
+        //     s=(uint8_t)(min + (max - min)*(rand()/(float)RAND_MAX));
+        //     printf("%d\n", s);
+        // }
+    }
+    
+    
     return 0;
 }
 

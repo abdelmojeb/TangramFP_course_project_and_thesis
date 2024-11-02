@@ -22,7 +22,9 @@
     "makefile.makePath": "make",
     "makefile.extensionLog": "c_src/",
     "files.associations": {
-      "compare": "gcc"
+      "compare": "gcc",
+      "limits": "c",
+      "kacy32.h": "c"
     },
     "C_Cpp.default.compilerPath": "C:\\msys64\\ucrt64\\bin\\gcc.exe"
 }

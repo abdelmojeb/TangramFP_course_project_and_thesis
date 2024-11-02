@@ -20,20 +20,27 @@
 // short f16_add(short a,short b);
 // short f16_sub(short a,short b);
 // short f16_mul(short a,short b);
+// defining short words for unsigned short and unsigned int
+typedef uint64_t uint64; // 
+typedef uint32_t ushort32;// 
 
-double kacy_f32_main(float* a, float* b, float sum,
+double kacy_f32_main(double* a, double* b, double sum,
                     short size,
                     short tangram,
                     short preb,
                     short offset);
 
-double kacy_fp32_mult(uint32_t a, uint32_t b, short mode, short cut);
+double kacy_fp32_mult(uint32_t a, uint32_t b, 
+                    short mode,
+                    short cut);
+uint64_t kacy_mul_core_1_X_Y(uint32_t u, uint32_t v,
+                    short mode, 
+                    short cut);
+ double float_to_double(const ushort32);
+ ushort32 double_to_float(const double);
 
 void da_sample_bc(int);
 void da_sample_bin(int);
 void da_dump();
 
 #endif
-// defining short words for unsigned short and unsigned int
-typedef uint64_t uint64; // 
-typedef uint32_t ushort32;// 

@@ -78,7 +78,7 @@ ushort32 double_to_float(const double x) {
                                     decimal indicator flag - initial rounding */
    //printf("e-1023 = %d, exp_diff = %d  shift = %d\n",e-1023, 1023-e-126, 925-e);
     return (b&0x8000000000000000)>>32 | (e>896)*((((e-896)<<23)&EXP_MASK)|m>>29) | \
-           ((e<897)&(e>871))*((((0x000FFFFFF0000000+m)>>(925-e))+1)>>1) |          \
+           ((e<897)&(e>872))*((((0x000FFFFFF0000000+m)>>(925-e))+1)>>1) |          \
            (e>1151)*0x7FFFFFFF; // sign : normalized : denormalized : saturate
 }
 

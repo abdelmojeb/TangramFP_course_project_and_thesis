@@ -5,7 +5,14 @@
             "label": "Build",
             "type": "shell",
             "command": "gcc",
-            "args": ["-DCONFIG_5", "-mpclmul", "-msse2", "-O3", "-g", "-I", "../include", "./c_src/*.c", "-o", "./c_src/main.exe"],
+            "args": ["-DCONFIG_5",
+             "-mpclmul", "-msse2", "-O3", 
+             "-g",//"-DDEBUG",
+              "-I", 
+              "../include", 
+              "./c_src/*.c",
+              "-o", 
+              "./c_src/main.exe"],
             "group": {
                 "kind": "build",
                 "isDefault": true
