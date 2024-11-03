@@ -50,7 +50,6 @@
 #include <assert.h>
 
 #include "../include/kacy32.h"
-//#include "../include/kacy.h"
 #include "../include/profiler.h"
 
 #define MAN_FULL         0x17 //0x0B
@@ -136,15 +135,13 @@ uint64_t kacy_mul_core_1_X_Y(uint32_t u, uint32_t v, short mode, short cut) {
     PRINT2("mode", mode, "cut", cut);
 
     uint64_t x, y, _u, _v, a, b, c, d;
-//MODIFICATION INCOMPLETE
-    x = (u & 0x800000) >> 23; // >> 10; 
-    y = (v & 0x800000) >> 23;// >> 10;
+    x = (u & 0x800000) >> 23; 
+    y = (v & 0x800000) >> 23;
     _u = u & 0x7FFFFF; _v = v & 0x7FFFFF;
     b = u & ((1 << cut) - 1);
     d = v & ((1 << cut) - 1);
 
     if (mode == FULL_1_X_Y){
-        //printf("mode FULL\n");
         a = _u >> cut; c = _v >> cut;
         return (x*y << 46) +
                (_u << 23) + (_v << 23) + //p + q = 12 + 11 = 23
@@ -153,7 +150,6 @@ uint64_t kacy_mul_core_1_X_Y(uint32_t u, uint32_t v, short mode, short cut) {
                b*d;
 
     } else if (mode == SKIP_BD_1_X_Y){
-        //printf("mode SKIP_BD\n");
         a = _u >> cut; c = _v >> cut;
         return (x*y << 46) +
                (_u << 23) + (_v << 23) +
@@ -161,7 +157,6 @@ uint64_t kacy_mul_core_1_X_Y(uint32_t u, uint32_t v, short mode, short cut) {
                ((a*d + c*b) << cut);
 
     } else if (mode == AC_ONLY_1_X_Y) {
-        //printf("mode AC_ONLY\n");
         a = (_u >> cut) + RTE(u, cut);
         c = (_v >> cut) + RTE(u, cut);
         return (x*y << 46) +
@@ -206,23 +201,22 @@ double kacy_fp32_mult(uint32_t a, uint32_t b, short mode, short cut) {
     assert (ax != 0);
     assert (bx != 0);
 
-    int64_t ab_exp = ax + bx - 127;//15
+    int64_t ab_exp = ax + bx - 127;
 
     PRINT3("ax", ax, "bx", bx, "ab_exp", ab_exp);
 
 
     if (ab_v & ((uint64_t)1<<47)) { // allignment of result
-        ab_v <<= 5;//2;
+        ab_v <<= 5;
         ab_exp += 897;
     } else if (ab_v & ((uint64_t)1<<46)) {
-        ab_v <<= 6;//3;
+        ab_v <<= 6;
         ab_exp += 896;
     }
 
     PRINT2("ab_exp", ab_exp, "av_v", ab_v);
 
-    //converter_64.i = ((sign_ab << 32) | (ab_exp << 52) | (ab_v & 0xFFFFFFFFFFFFF));
-    //converter_32.i = double_to_float(converter_64.f);
+  
     converter_64.i = ((sign_ab << 32) | (ab_exp << 52) | (ab_v & 0xFFFFFFFFFFFFF));
     return converter_64.f;
 }
@@ -230,7 +224,7 @@ double kacy_fp32_mult(uint32_t a, uint32_t b, short mode, short cut) {
 
 double kacy_f32_main(double* _a, double* _b, double _sum, short size,
                     short tangram,  /* 0x10 */
-                    short preb,     /* 5 */
+                    short preb,     /* 11 */
                     short offset) { /* 0 */
 
     PRINT1("kacy_f16_main", 0);
@@ -319,12 +313,12 @@ double kacy_f32_main(double* _a, double* _b, double _sum, short size,
         ax += (ax==0);
         int bx = EXPONENT(b[i]);
         bx += (bx==0);
-        exp[i] = ax + bx - 127;//15;
+        exp[i] = ax + bx - 127;
 
         
         if (max_exp <= exp[i]){
             max_exp = exp[i];}
-        //printf("ax %d, bx %d, exp %d, sumx %d \n", ax, bx, exp[i], sumx);
+        
     }
 
 
@@ -337,10 +331,6 @@ double kacy_f32_main(double* _a, double* _b, double _sum, short size,
         if (zs[i]) continue;
 
         int exp_diff = max_exp - exp[i];
-        if (exp_diff >= 0x40 | exp_diff < 0){
-            printf("exp_diff : %d\n", exp_diff);
-            printf(" exp %d, sumx %d, max_exp %d\n", exp[i]-127, sumx-127, max_exp-127);
-        }
         da_sample_bin(exp_diff);
 
         if (exp_diff < 0){

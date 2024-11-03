@@ -34,7 +34,6 @@
 /* Code: */
 
 #include "../include/kacy32.h"
-//#include "../include/kacy.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <wmmintrin.h>
@@ -54,13 +53,10 @@ double float_to_double(const ushort32 x) {
     const uint64 m = m1<<29;   // mantissa 13
     const uint64 v = as_uint64((double)m)>>52; // evil log2 bit hack to count
                                           // leading zeros in denormalized format
-    printf("the m1 = %#0llx\n",m1);
-    printf("the number = %#0llx\n", (v-178)<<52|((m<<(1075-v))&0xFFFFFE0000000));
+    
     return as_double((x&(uint64)0x80000000)<<32 | (e!=0)*((e+896)<<29|m) | \
                     ((e==0)&(m!=0))*((v-178)<<52|((m<<(1075-v))&0xFFFFFE0000000)));
-           // sign : normalized : denormalized   
-           //as_float((x&0x8000)<<16 | (e!=0)*((e+112)<<23|m) | \ 
-             //       ((e==0)&(m!=0))*((v-37)<<23|((m<<(150-v))&0x007FE000)));
+                                 // sign : normalized : denormalized   
 }
 
 
@@ -76,10 +72,10 @@ ushort32 double_to_float(const double x) {
     const uint64 m = b&0xFFFFFFFFFFFFF; /* mantissa; in line below:
                                     0x007FF000 = 0x00800000-0x00001000 =
                                     decimal indicator flag - initial rounding */
-   //printf("e-1023 = %d, exp_diff = %d  shift = %d\n",e-1023, 1023-e-126, 925-e);
+   
     return (b&0x8000000000000000)>>32 | (e>896)*((((e-896)<<23)&EXP_MASK)|m>>29) | \
            ((e<897)&(e>872))*((((0x000FFFFFF0000000+m)>>(925-e))+1)>>1) |          \
            (e>1151)*0x7FFFFFFF; // sign : normalized : denormalized : saturate
 }
 
-/* fp16.c ends here */
+/* fp32.c ends here */
