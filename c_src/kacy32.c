@@ -227,7 +227,7 @@ double kacy_f32_main(double* _a, double* _b, double _sum, short size,
                     short preb,     /* 11 */
                     short offset) { /* 0 */
 
-    PRINT1("kacy_f16_main", 0);
+    PRINT1("kacy_f32_main", 0);
 
     assert (tangram == TANG_1_X_Y);
 
