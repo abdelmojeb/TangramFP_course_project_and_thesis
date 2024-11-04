@@ -81,91 +81,7 @@ int main(int argc, char **argv){
     uint32_t res;
 
     switch(_branch){
-
     case 0:
-        // a = 0x0733;
-        // b = 0x05cd;
-        // res = a * b;
-        // printf("a=%#04x, b=%#04x, res = %#08x \n", a, b, res);
-        // // result should be: 0x29c2d7
-        // printf("Enter to continue \n");
-        // break;
-
-    case 1:
-        /* a = 0x0733; */
-        /* b = 0x0001; */
-        /* res = xor_mul(a, b); */
-        /* printf("a=%#04x, b=%#04x, res = %#08x \n", a, b, res); */
-        /* printf("Enter to continue \n"); */
-        /* break; */
-
-    case 3:
-        /* // 1, Naive but representative test of xormul */
-        /* res = xor_mul(a, b); */
-        /* printf("res = %#08x \n", res); // result should be: 0x198827 */
-        /* printf("Enter to continue \n"); */
-        /* getchar(); */
-
-        // 2, print the mul-matrix of xormul
-        // uint32_t num=1, _res, i, j;
-        // int max = 1024;
-        // printf("\t\tTable from 1 to max: %d \n", max);
-        // for(i=0; i<max; i++)
-        // {
-        //     printf("Table of %d \n", num);
-        //     for(j=1; j<=num; j++)
-        //     {
-        //         _res = num * j;
-        //         res = xor_mul(num, j);
-        //         printf("%d x %d = %d (%d) +%d  \n",
-        //                 num, j, _res, res, _res - res);
-        //     }
-        //     printf("\n");
-        //     num++;
-        // }
-        // getchar();
-
-        // 3, test Intel's clmul
-
-        /* res = clmul64(a, b); */
-
-        /* printf("a: %#04x \n", a); */
-        /* printf("b: %#04x \n", b); */
-        /* printf("res: %#08x \n", res); */
-        /* printf("Enter to continue \n"); */
-        /* break; */
-
-        // The result array now contains the 128-bit CLMUL multiplication result
-
-    case 4:
-        // 4, test Karatsuba algorithm
-        /* while(1){ */
-        /*     uint16_t pw; */
-        /*     printf("Enter pw: [0<=pw<=16]. 17 to quit\n"); */
-        /*     scanf("%" SCNd16, &pw); */
-        /*     if(pw == 17) */
-        /*         break; */
-        /*     res = mul_K(a, b, pw); */
-
-        /*     printf("a: %#04x \n", a); */
-        /*     printf("b: %#04x \n", b); */
-        /*     printf("res: %#08x \n", res); */
-        /* } */
-        /* break; */
-
-     case 5:
-        // // 5, play with exp
-        // float aa = -0.000121951104;//0.20214844;
-        // float bb = -0.5;
-        // float rres = 0.0;
-
-        // printf("a: %f, b: %4f, sum: %4f \n", aa, bb, rres);
-
-        // rres = kacy_f16_main(&aa, &bb, rres, 1, 0x10, 5, 0);
-
-        // printf("res: %.12f \n", rres);
-        // break;
-    case 6:
         // union {
         //     float f;
         //     uint32_t i;
@@ -178,7 +94,7 @@ int main(int argc, char **argv){
         // converter.i =  double_to_float(0.6512984642e-45);
         // printf(" result: %#016lx, float result : %18g", converter.i, converter.f);
         //  break;
-    case 7:
+    case 1:
         // 5, play with exp
         // float x = -0.000121951104;//0.20214844;
         // float y = -0.5;
@@ -192,11 +108,11 @@ int main(int argc, char **argv){
         // printf("cast down %#016llx \n", (ushort32)0x000FFFFFF0000000);
         // break;
     
-    case 8:
+    case 2:
     run_f32_mult_tests(1000);
     
     break;
-    case 9:
+    case 3:
         run_mac_tests(1000,11);
         break;
     }
