@@ -56,9 +56,7 @@
 #include <time.h>
 #include <math.h>
 #include "../include/test.h"
-// extern float half_to_float(const ushort);
-// extern ushort float_to_half(const float);
-//extern double float_to_double(const ushort32);
+
 double as_double(const uint64 x) ;
 ushort32 double_to_float(double x);
 uint32_t clmul64(uint32_t a, uint32_t b) {
