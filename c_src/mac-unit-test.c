@@ -250,10 +250,10 @@ void run_mac_tests(int num_tests, int cut) {
             max_ulp_error = ulp_error;
             if (ulp_error >= 0.50) {  // Log errors larger than 1 ULP
                 error_count++;
-                if ((float)actual_result == sum){
-                    printf("skip mode\n");
+                if (actual_result == sum_d){
+                    printf("\nskip mode\n");
                 }
-                printf("\nTest %d - ULP Error: %.2f\n", test, ulp_error);
+                printf("Test %d - ULP Error: %.2f\n", test, ulp_error);
                 printf("Expected: %.17g \n", expected_result);
                 printf("Actual  : %.17g \n", actual_result);
                 printf("Sample inputs that caused large error:\n");
