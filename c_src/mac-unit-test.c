@@ -5,6 +5,8 @@
 #include <float.h>
 #include <assert.h>
 #include "../include/kacy32.h"
+#include <string.h>
+
 // Function to test f32_mul function
 void run_f32_mult_tests(int num_tests) {
         union {
@@ -50,23 +52,38 @@ void run_f32_mult_tests(int num_tests) {
     
 }
 /*counting modes of multiplications*/
-void count_modes(int threshold,float a,float b,float sum, int* full_mode_count, int* skip_bd_mode_count, int* skip_adbc_mode_count, int* skip_mode_count) {
+int count_modes(int threshold,double a,double b,double sum,
+                int* full_mode_count, int* skip_bd_mode_count, 
+                int* skip_adbc_mode_count, 
+                int* skip_mode_count, char* mode) {
     int expa,expb,exps;
-    frexpf(a, &expa);
-    frexpf(b, &expb);
-    frexpf(sum, &exps);
-    int exp_diff = exps - (expb+expa);
+    uint32_t a_f = double_to_float(a);
+    uint32_t b_f = double_to_float(b);  
+    uint32_t sum_f = double_to_float(sum);
+    expa = EXPONENT(a_f); 
+    expb = EXPONENT(b_f); 
+    exps = EXPONENT(sum_f); 
+    expa += (expa==0);
+    expb += (expb==0);
+    exps += (exps==0);
+    int exp_diff = exps - (expb+expa-127);
     if(exp_diff < 0){
         *full_mode_count=*full_mode_count+1;
+        strcpy(mode,"full mode");
     }else if(exp_diff == 0){
         *full_mode_count=*full_mode_count+1;
+        strcpy(mode, "full mode");
     }else if(exp_diff > 0 && exp_diff < threshold){
         *skip_bd_mode_count=*skip_bd_mode_count+1;
+        strcpy(mode, "skip_bd mode" );
     }else if(exp_diff >= threshold && exp_diff < 23){
         *skip_adbc_mode_count=*skip_adbc_mode_count+1;
+        strcpy(mode, "skip_ac_only mode");
     }else{
         *skip_mode_count=*skip_mode_count+1;
+        strcpy(mode, "skip mode");
     }
+    return exp_diff;
 }
 // Function to calculate ULP size for a given double value
 double ulp_size(double x) {
@@ -193,7 +210,8 @@ void generate(float *a, float *b, float *sum) {
         converters.i = (signs<<31)&0x80000000|(sum_exp<<23)&0x7F800000|mantissa_sum&0x7FFFFF;
         
         if (sum_exp - (a_exp + b_exp - 127)<0){
-            printf("min = %d max = %d diff= %d\n", min_sum_exp , max_sum_exp, sum_exp - (a_exp + b_exp - 127));
+            printf("min = %d max = %d diff= %d\n",\
+             min_sum_exp , max_sum_exp, sum_exp - (a_exp + b_exp - 127));
            // assert(sum_exp - (a_exp + b_exp - 127) < 64 && sum_exp - (a_exp + b_exp - 127) >= 0);
         }
         *a = convertera.f;
@@ -220,18 +238,20 @@ void run_mac_tests(int num_tests, int cut) {
     int skip_bd_mode_count=0;
     int skip_adbc_mode_count=0;//only ac
     int skip_mode_count=0;
+    char mode[20] = "";
     for (int test = 0; test < num_tests; test++) {
         
         
 
         generate(&a, &b, &sum);
+          /*skip bd mode with only one shift*/              /* skip mode debug values*/
+        // a = -62434175690423140352.0;                    // a_d=a=1.123614615521247e-13;
+       // b = 3.54406546878228122102e-26;                 // b_d=2.492087844802879e+30;
+      // sum = 2.2125987015897408127785e-06;             // sum_d=-9.7986553680716196e+23;
+                                                       
         a_d = (double)a;
         b_d = (double)b;
         sum_d = (double)sum;
-                                                        /* skip mode debug values
-                                                        a_d=a=1.123614615521247e-13;
-                                                        b_d=2.492087844802879e+30;
-                                                        sum_d=-9.7986553680716196e+23;*/
         expected_result = a_d * b_d+ sum;
 
         actual_result = kacy_f32_main(&a_d, &b_d, sum_d, 1, 0x10, cut, 0);
@@ -241,7 +261,11 @@ void run_mac_tests(int num_tests, int cut) {
         //actual_result= kacy_fp32_mult( convertera.i, converterb.i, 0x11, 11);
        */
       //count modes of multiplications
-      count_modes(cut, a,b,sum, &full_mode_count, &skip_bd_mode_count, &skip_adbc_mode_count, &skip_mode_count);
+      int exp_diff =count_modes(cut, a_d, b_d, sum_d,
+                                 &full_mode_count, 
+                                 &skip_bd_mode_count,
+                                 &skip_adbc_mode_count, 
+                                 &skip_mode_count, mode);
       
         // Calculate ULP error
         double ulp_error = ulp_difference(actual_result, expected_result);
@@ -250,11 +274,10 @@ void run_mac_tests(int num_tests, int cut) {
             max_ulp_error = ulp_error;
             if (ulp_error >= 0.50) {  // Log errors larger than 1 ULP
                 error_count++;
-                if (actual_result == sum_d){
-                    printf("\nskip mode\n");
-                }
+                printf("\nmode: %s, exponent diff: %d\n", mode, exp_diff);
                 printf("Test %d - ULP Error: %.2f\n", test, ulp_error);
-                printf("Expected: %.17g \n", expected_result);
+                printf("Expected double: %.17g \n", expected_result);
+                printf("Expected float: %.17g \n", a*b+sum);
                 printf("Actual  : %.17g \n", actual_result);
                 printf("Sample inputs that caused large error:\n");
                 printf("a=%.23g , b=%.23g, sum=%.23g\n", a_d, b_d,sum_d);
@@ -268,12 +291,13 @@ void run_mac_tests(int num_tests, int cut) {
     //printf("Vector length per test: %d\n", num_tests);
     printf("Maximum ULP error: %.2f\n", max_ulp_error);
     printf("Average ULP error: %.2f\n", total_ulp_error / num_tests);
-    printf("Number of errors >1 ULP: %d\n", error_count);
-    printf("modes : Full=%d Skip_bd=%d OnlyAC=%d skip=%d\n", full_mode_count, skip_bd_mode_count, skip_adbc_mode_count, skip_mode_count);
+    printf("Number of errors >0.5 ULP: %d\n", error_count);
+    printf("modes : Full=%d Skip_bd=%d OnlyAC=%d skip=%d\n", full_mode_count,
+                    skip_bd_mode_count,skip_adbc_mode_count, skip_mode_count);
     // Categorize errors
     printf("\nError distribution:\n");
-    printf("0-1 ULP   : %.2f%%\n", 100.0 * (num_tests - error_count) / num_tests);
-    printf(">1 ULP    : %.2f%%\n", 100.0 * error_count / num_tests);
+    printf("0-0.5 ULP   : %.12f%%\n", 100.0 * (num_tests - error_count) / num_tests);
+    printf(">0.5 ULP    : %.12f%%\n", 100.0 * (error_count / num_tests));
     
 
 }
