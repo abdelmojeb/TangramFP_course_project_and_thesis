@@ -218,7 +218,7 @@ void generate(float *a, float *b, float *sum) {
         *b = converterb.f;
         *sum = converters.f;
 }
-void run_mac_tests(int num_tests, int cut) {
+void run_mac_tests(int num_tests, int cut, int offset) {
     int error_count = 0;
     double total_ulp_error = 0.0;
     double max_ulp_error = 0.0;
@@ -296,8 +296,8 @@ void run_mac_tests(int num_tests, int cut) {
                     skip_bd_mode_count,skip_adbc_mode_count, skip_mode_count);
     // Categorize errors
     printf("\nError distribution:\n");
-    printf("0-0.5 ULP   : %.12f%%\n", 100.0 * (num_tests - error_count) / num_tests);
-    printf(">0.5 ULP    : %.12f%%\n", 100.0 * (error_count / num_tests));
+    printf("0-0.5 ULP   : %.7g%%\n", 100.0 * (num_tests - error_count) / num_tests);
+    printf(">0.5 ULP    : %.7g%%\n", 100.0 * ((float)error_count / num_tests));
     
 
 }

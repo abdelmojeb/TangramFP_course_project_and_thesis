@@ -113,7 +113,7 @@ int main(int argc, char **argv){
     
     break;
     case 3:
-        run_mac_tests(1000000,11);
+        run_mac_tests(1000000,11,11);
         break;
     }
     
