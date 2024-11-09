@@ -134,34 +134,36 @@ uint64_t kacy_mul_core_1_X_Y(uint32_t u, uint32_t v, short mode, short cut) {
     assert(((u & 0xFFFFFF)!=0) && ((v & 0xFFFFFF)!=0));
     PRINT2("mode", mode, "cut", cut);
 
+    short p,q;
     uint64_t x, y, _u, _v, a, b, c, d;
+    q = cut; p = MAN_FULL-cut;
     x = (u & 0x800000) >> 23; 
     y = (v & 0x800000) >> 23;
     _u = u & 0x7FFFFF; _v = v & 0x7FFFFF;
-    b = u & ((1 << cut) - 1);
-    d = v & ((1 << cut) - 1);
+    b = u & ((1 << q) - 1);
+    d = v & ((1 << q) - 1);
 
     if (mode == FULL_1_X_Y){
-        a = _u >> cut; c = _v >> cut;
-        return (x*y << 46) +
-               (_u << 23) + (_v << 23) + //p + q = 12 + 11 = 23
-               (a*c << cut*2) +
-               ((a*d + c*b) << cut) +
+        a = _u >> q; c = _v >> q;
+        return (x*y << 2*(p+q)) +
+               (_u << (p+q)) + (_v << (p+q)) + //p + q = 12 + 11 = 23
+               (a*c << q*2) +
+               ((a*d + c*b) << q) +
                b*d;
 
     } else if (mode == SKIP_BD_1_X_Y){
-        a = _u >> cut; c = _v >> cut;
-        return (x*y << 46) +
-               (_u << 23) + (_v << 23) +
-               (a*c << cut*2) +
-               ((a*d + c*b) << cut);
+        a = _u >> q; c = _v >> q;
+        return (x*y << 2*(p+q)) +
+               (_u << (p+q)) + (_v << (p+q)) +
+               (a*c << q*2) +
+               ((a*d + c*b) << q);
 
     } else if (mode == AC_ONLY_1_X_Y) {
-        a = (_u >> cut) + RTE(u, cut);
-        c = (_v >> cut) + RTE(u, cut);
-        return (x*y << 46) +
-               (_u << 23) + (_v << 23) +
-               (a*c << cut*2);
+        a = (_u >> q) + RTE(u, q);
+        c = (_v >> q) + RTE(u, q);
+        return (x*y << 2*(p+q)) +
+               (_u << (p+q)) + (_v << (p+q)) +
+               (a*c << q*2);
 
     } else {
         KACY_PANIC("");
