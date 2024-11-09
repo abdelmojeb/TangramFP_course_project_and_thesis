@@ -137,8 +137,8 @@ uint64_t kacy_mul_core_1_X_Y(uint32_t u, uint32_t v, short mode, short cut) {
     short p,q;
     uint64_t x, y, _u, _v, a, b, c, d;
     q = cut; p = MAN_FULL-cut;
-    x = (u & 0x800000) >> 23; 
-    y = (v & 0x800000) >> 23;
+    x = (u & 0x800000) >> MAN_FULL; 
+    y = (v & 0x800000) >> MAN_FULL;
     _u = u & 0x7FFFFF; _v = v & 0x7FFFFF;
     b = u & ((1 << q) - 1);
     d = v & ((1 << q) - 1);
