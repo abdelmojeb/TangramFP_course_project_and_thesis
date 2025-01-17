@@ -1,0 +1,14 @@
+1, Write the course report.
+
+1.1 The report contains at least two parts.
+  - [ ] What did you do to enable TangramFP for 32-bit on top of 16-bit
+  - [ ] What did you do for HW implementation.
+
+1.2 The report needs to have a experiment section.
+  - [ ] Synthesis report for the MAC, including the number of gates, area, power, etc.
+  - [ ] Collect power consumption for different modes.
+    - [ ] 1M inputs which all trigger mode 1 -> report power.
+    - [ ] 1M inputs which all trigger mode 2 -> report power.
+    - [ ] 1M inputs which all trigger mode 3 -> report power.
+    - [ ] 1M inputs which all trigger mode 4 -> report power.
+    - [ ] Compare and report the power consumption. 
