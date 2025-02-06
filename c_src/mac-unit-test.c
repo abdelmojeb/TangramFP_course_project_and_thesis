@@ -222,10 +222,12 @@ void run_mac_tests(int num_tests, int cut, int offset) {
     int error_count = 0;
     double total_ulp_error = 0.0;
     double max_ulp_error = 0.0;
-    double expected_result = 0.0;
-    double actual_result = 0.0;
+    float expected_result = 0.0;
+    float actual_result = 0.0;
     double a_d, b_d, sum_d;
     float a,b,sum;
+    double ulp_full,ulp_skip_bd,ulp_AC_only,ulp_skip = 0.0;
+
     union {
         uint32_t i;
         float f;
@@ -252,9 +254,9 @@ void run_mac_tests(int num_tests, int cut, int offset) {
         a_d = (double)a;
         b_d = (double)b;
         sum_d = (double)sum;
-        expected_result = a_d * b_d+ sum;
+        expected_result = (float)(a_d * b_d+ sum);
 
-        actual_result = kacy_f32_main(&a_d, &b_d, sum_d, 1, 0x10, cut, 0);
+        actual_result = (float)(kacy_f32_main(&a_d, &b_d, sum_d, 1, 0x10, cut, 0));
       /* test kacy_fp32_mult here or alternatively from run_f32_mult_tests
         convertera.f=a;
         converterb.f=b;
@@ -269,6 +271,18 @@ void run_mac_tests(int num_tests, int cut, int offset) {
       
         // Calculate ULP error
         double ulp_error = ulp_difference(actual_result, expected_result);
+        if (strcmp(mode, "full mode") == 1 ) {
+            ulp_full += ulp_error;
+        }
+        if (strcmp(mode, "skip_bd mode") == 1 ) {
+            ulp_skip_bd += ulp_error;
+        }
+        if (strcmp(mode, "skip_ac_only mode") == 1 ) {
+            ulp_AC_only += ulp_error;
+        }
+        if (strcmp(mode, "skip mode") == 1 ) {
+            ulp_skip += ulp_error;
+        }
         total_ulp_error += ulp_error;
         if (ulp_error > max_ulp_error) {
             max_ulp_error = ulp_error;
@@ -294,6 +308,8 @@ void run_mac_tests(int num_tests, int cut, int offset) {
     printf("Number of errors >0.5 ULP: %d\n", error_count);
     printf("modes : Full=%d Skip_bd=%d OnlyAC=%d skip=%d\n", full_mode_count,
                     skip_bd_mode_count,skip_adbc_mode_count, skip_mode_count);
+    printf("ULP per modes\n : ulp_Full = %2.5g \nulp_Skip_bd = %2.5g \nulp_OnlyAC = %2.5g \nulp_skip = %2.5g\n", ulp_full/full_mode_count,
+                    ulp_skip_bd,ulp_AC_only/skip_adbc_mode_count, ulp_skip/skip_mode_count);
     // Categorize errors
     printf("\nError distribution:\n");
     printf("0-0.5 ULP   : %.7g%%\n", 100.0 * (num_tests - error_count) / num_tests);
