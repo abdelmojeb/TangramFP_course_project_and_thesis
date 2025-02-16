@@ -39,18 +39,36 @@ entity add_fp is
 end add_fp;
 
 architecture Behavioral of add_fp is
+attribute use_carry_chain : string;
+attribute use_carry_chain of Behavioral : architecture is "yes";
+attribute keep : string;
+
+
     constant add : std_logic:= '0' ;
     constant sub : std_logic:= '1' ;
     signal operation : std_logic := '0';
     signal exp_a,exp_b, exp_ab, exp_ab_r: unsigned(precision-man_width-2 downto 0):= (others => '0');
     signal man_a, man_b,man_b_aligned,man_a_aligned  : unsigned(man_width downto 0):= (others => '0');
     signal man_add_a, man_add_b, man_sub_a,man_sub_b : unsigned(man_width downto 0):= (others => '0');
-    signal man_ab_add,man_ab_sub,man_ab_add1 : unsigned(man_width+1 downto 0):= (others => '0');
+    signal man_ab_add,man_ab_sub : unsigned(man_width+1 downto 0):= (others => '0');
     signal man_result : unsigned(man_width-1 downto 0):= (others => '0');
     signal cin, bin : unsigned(man_width downto 0):= (others => '0');
     signal shift : integer range 0 to 64;
     signal sign_a, sign_b, sign_ab: std_logic;
     signal temp_result : unsigned(man_width+1 downto 0):= (others =>'0');
+    signal  shift_count : natural range 0 to 54 := 0;
+    ------------lzc
+    signal man_lZC_input : std_logic_vector (53 downto 0);
+    signal shift_vec : std_logic_vector (5 downto 0);
+    signal enable_lzc : std_logic;
+    
+    attribute keep of man_ab_add : signal is "true";
+    attribute keep of man_ab_sub : signal is "true";
+    attribute keep of Cin : signal is "true";
+    attribute keep of man_add_a : signal is "true";
+    attribute keep of man_add_b : signal is "true";
+    attribute keep of bin : signal is "true";
+    
     component fulladder is
         port (a : in std_logic;
               b : in std_logic;
@@ -67,17 +85,23 @@ architecture Behavioral of add_fp is
               bout : out std_logic
              );
     end component;
-    
+    component lzc_54
+        port (
+        mantissa   : in std_logic_vector(53 downto 0);
+        enable      : in std_logic;
+        shift_count: out std_logic_vector(5 downto 0)
+    );
+    end component;
     begin
     -- extract parts
     exp_a <= unsigned(a(precision-2 downto man_width));
     exp_b <= unsigned(b(precision-2 downto man_width));
-    man_a <= '1' & unsigned(a(man_width-1 downto 0)) when exp_a > 0;
-    man_b <= '1' & unsigned(b(man_width-1 downto 0)) when exp_b > 0;
+    man_a <= '1' & unsigned(a(man_width-1 downto 0)) when exp_a > 0 else (others => '0');
+    man_b <= '1' & unsigned(b(man_width-1 downto 0)) when exp_b > 0 else (others => '0');
     sign_a <= a(precision-1);
     sign_b <= b(precision-1);
     -- compute alignment shift amount and swap
-    process (exp_a,exp_b,man_a,man_b)
+    process (exp_a,exp_b,man_a,man_b,sign_a,sign_b)
         begin
             if (exp_a = exp_b) then
                 if (man_a >= man_b)then
@@ -164,36 +188,89 @@ architecture Behavioral of add_fp is
                     bout => bin(i+1)
                     );
         end generate;
+   --determine leading zero in mantissa
+   ----------------------------------------------     
+--    process(operation, man_ab_sub)
+--    begin
+--    if (operation = sub and man_ab_sub = to_unsigned(0, man_ab_sub'length)) then
+--        shift_count <= 0;
+--    else
+--        for i in 0 to man_width+1 loop
+--            if man_ab_sub(man_width+1-i) = '1' then
+--                  shift_count <= i;
+--                  exit;
+--            else 
+--                shift_count <= 0;
+--            end if;
+--        end loop;
+--    end if;
+--    end process;
+
+    LZC: lzc_54
+        Port map (
+            mantissa => man_lZC_input,
+            enable => enable_lzc,
+            shift_count => shift_vec
+            );
+            
+lzc_zeros:    process (man_ab_sub, operation, shift_vec)
+            begin
+            if (operation = sub) then
+                man_lZC_input <= std_logic_vector(man_ab_sub);
+                shift_count <= to_integer(unsigned(shift_vec));
+                enable_lzc <= '1';
+            else 
+                man_lZC_input <= (others => '0');
+                shift_count <= 0;
+                enable_lzc <= '0';
+            end if;
+        end process;
+    -----------------------------------------------
     -- normalize result
-    process(man_ab_add,man_ab_sub,temp_result)
-        --variable temp_result : unsigned(man_width+1 downto 0):= (others =>'0');
-        variable shift_count : natural range 0 to 32 := 0;
-        begin
+    process(man_ab_add, man_ab_sub, operation,shift_count)
+    begin
+        temp_result <= (others => '0');
+        if (operation = add) then
+            if (man_ab_add(man_width+1) = '1') then
+                temp_result <= man_ab_add + 1; -- rounding
+            else
+                temp_result <= man_ab_add;
+            end if;
+        elsif (operation = sub) then
+            if (man_ab_sub = to_unsigned(0, man_ab_sub'length)) then
+                temp_result <= (others => '0');
+            else
+--                for i in 0 to man_width+1 loop
+--                    if man_ab_sub(man_width+1-i) = '1' then
+--                        shift_count <= i;
+--                        exit;
+--                    end if;
+--                end loop;
+                -- Normalize the mantissa by left-shifting it
+                temp_result <= shift_left(man_ab_sub, shift_count);
+            end if;
+        else
+            temp_result <= (others => '0');
+        end if;
+    end process;
+    
+    process(temp_result, exp_ab,man_ab_add, man_ab_sub,operation,shift_count)
+    begin
         man_result <= (others => '0');
         exp_ab_r <= (others => '0');
-        temp_result <= (others => '0');
-        if (operation = add)then
-            if (man_ab_add(man_width+1)='1')then
-                temp_result <= man_ab_add +1;
+        if (operation = add) then
+            if (man_ab_add(man_width+1) = '1') then
                 man_result <= temp_result(man_width downto 1);
                 exp_ab_r <= exp_ab + 1;
             else
-                man_result <= man_ab_add(man_width-1 downto 0);
+                man_result <= temp_result(man_width-1 downto 0);
                 exp_ab_r <= exp_ab;
             end if;
-        elsif (operation = sub)then
-             if (man_ab_sub = to_unsigned(0, man_ab_sub'length)) then
-               man_result <= (others => '0');
-               exp_ab_r <= exp_ab; -- No adjustment needed
-             else
-                for i in 0 to man_width+1 loop
-                    if man_ab_sub(man_width+1-i) = '1' then
-                        shift_count := i;
-                        exit; 
-                    end if;
-                end loop;                
-            -- Normalize the mantissa by left-shifting it            
-                temp_result <= shift_left(man_ab_sub, shift_count);--man_ab_sub sll (shift_count);
+        elsif (operation = sub) then
+            if (man_ab_sub = to_unsigned(0, man_ab_sub'length)) then
+                man_result <= (others => '0');
+                exp_ab_r <= exp_ab; -- No adjustment needed
+            else
                 man_result <= temp_result(man_width downto 1); -- Assign normalized mantissa
                 exp_ab_r <= exp_ab - (shift_count-1); -- Adjust exponent
             end if;
@@ -201,8 +278,7 @@ architecture Behavioral of add_fp is
             man_result <= (others => '0');
             exp_ab_r <= (others => '0');
         end if;
-            
-   end process;            
+    end process;
         
     result <= std_logic_vector(sign_ab & exp_ab_r&man_result);
 end Behavioral;
