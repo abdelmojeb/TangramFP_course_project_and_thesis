@@ -26,13 +26,31 @@ use std.textio.all;
 -- Uncomment the following library declaration if using
 -- arithmetic functions with Signed or Unsigned values
 use IEEE.NUMERIC_STD.ALL;
-
+  
 entity mac_tb is
-generic (precision : integer := 32;exp_width: integer:= 8;man_width : integer := 23);
+generic (precision : integer range 0 to 128 := 32; precision64 : integer range 0 to 128 := 64;
+                    exp_width: integer:= 8;man_width : integer := 23);
 end mac_tb;
 
 architecture Behavioral of mac_tb is
-
+    function is_valid_exponent(exp: integer) return boolean is
+        begin
+            return (exp >= -126 and exp <= 127);  -- Valid range for IEEE-754
+        end function;
+        
+    function is_valid_mantissa(man: integer) return boolean is
+        begin
+            return (man >= 0 and man < 2**23);  -- 23-bit mantissa
+        end function;
+    function is_x(v: std_logic_vector) return boolean is
+    begin
+        for i in v'range loop
+            if v(i) = 'X' or v(i) = 'U' then
+                return true;
+            end if;
+        end loop;
+        return false;
+    end function;
     procedure generate_random_vector(seed1, seed2: inout positive; 
                                    rout: out real) is
          variable r1, r2: real;
@@ -50,12 +68,110 @@ architecture Behavioral of mac_tb is
           -- Combine to get final number
           rout := r1 * (2.0 ** exp);
     end procedure;
+    procedure generate_aligned_random_vectors(seed1, seed2: inout positive; 
+              rout_a,rout_b,rout_c: out std_logic_vector(31 downto 0)) is
+        variable r1, r2, r3, rm1,rm2,rm3: real;
+        variable exp_a, exp_b, exp_c: integer;
+        variable man1,man2,man3: natural;
+        variable s1,s2,s3 : std_logic;
+        constant max_exp: integer := 126;  -- Maximum exponent for float32
+        constant min_exp: integer := -125; -- Minimum exponent for normalized float32
+        constant alignment_shifts: integer := 0;
+    begin
+        -- Generate random numbers for a and b
+        uniform(seed1, seed2, r1);
+        r1 := (r1 * 2.0 - 1.0);  -- Range [-1,1]
+        uniform(seed1, seed2, r2);
+        r2 := (r2 * 2.0 - 1.0);  -- Range [-1,1]
+        
+        -- Generate random number for c
+        uniform(seed1, seed2, r3);
+        r3 := (r3 * 2.0 - 1.0);  -- Range [-1,1]
+        
+        uniform(seed1, seed2, rm1);
+        uniform(seed1, seed2, rm2);
+        uniform(seed1, seed2, rm3);
+        man1 := integer(rm1*8388607.0);
+        man2 := man1 + integer(rm2*2.0);--integer(rm2*8388607.0);
+        man3 := man1 - integer(rm3*2.0);--integer(rm3*8388607.0);
+        
+        -- Generate exponents for a and b
+        uniform(seed1, seed2, r1);
+        exp_a := integer(r1 * (2.0 * real(max_exp))-1.0) - max_exp;  -- Range [-127,127]
+        uniform(seed1, seed2, r2);
+        exp_b := integer(r2 * (2.0 * real(max_exp))-1.0) - max_exp;  -- Range [-127,127]
+
+        -- Ensure the product of a and b does not exceed the max/min values of fp-32
+        if exp_a + exp_b + alignment_shifts> max_exp then
+            exp_a := max_exp - exp_b;
+        elsif exp_a + exp_b < min_exp then
+            exp_a := min_exp - exp_b;
+        end if;
+
+        -- Ensure the exponent of c is greater than the sum of exponents of a and b minus alignment shifts
+        -- value of exp_c that results in a specific multiplication mode
+        exp_c := exp_a + exp_b + alignment_shifts;--+ alignment_shifts + 1;
+        if exp_c > max_exp then
+            exp_c := max_exp;
+        elsif exp_c < min_exp then
+            exp_c := min_exp;
+        end if;
+
+        if rm1 > 0.5 then
+            s1 := '0';
+        else
+            s1 := '1';
+        end if;
+        if rm2  > 0.5 then
+            s2 := '0';
+        else
+            s2 := '1';
+        end if;
+        if rm3  > 0.5 then
+            s3 := '0';
+        else
+            s3 := '1';
+        end if;
+            rout_a := s1 & std_logic_vector(to_unsigned(exp_a+127, 8)) & std_logic_vector(to_unsigned(man1, 23));
+        
+            rout_b := s2 & std_logic_vector(to_unsigned(exp_b+127, 8)) & std_logic_vector(to_unsigned(man2, 23));
+        
+            rout_c := s3 & std_logic_vector(to_unsigned(exp_c+127, 8)) & std_logic_vector(to_unsigned(man3, 23));
+    end procedure;
+
     
-    signal clk : std_logic := '0';
-    signal n_rst : std_logic := '0';
-    signal a, b,c : std_logic_vector(precision-1 downto 0);
-    signal result,ar_vec : std_logic_vector(precision-1 downto 0);
-    
+    --function to convert fp_64 to fp 32
+    function float_64_to_32 (f : std_logic_vector(63 downto 0))
+    return std_logic_vector is
+        variable v : integer := 16777215;
+        variable exp :unsigned(10 downto 0) := unsigned(f(62 downto 52));
+        variable mantissa : unsigned (24 downto 0) :=  '0'& unsigned(f(51 downto 28)) +1;
+        begin
+            if (to_integer(exp) < 873)then 
+                exp := (others=> '0');
+                mantissa := (others => '0');
+            
+            elsif (to_integer(exp) > 872 and to_integer(exp) < 897)then
+                report integer'image(to_integer(mantissa));
+                mantissa := mantissa + to_unsigned(16777215,25);
+                report integer'image(to_integer(mantissa));
+                mantissa := shift_right(mantissa, (897 - to_integer(exp))) +1;
+                report integer'image(to_integer(mantissa));
+                mantissa := shift_right(mantissa, 1);
+                report integer'image(to_integer(mantissa));
+                exp := (others=> '0');
+            elsif (to_integer(exp) > 896)then
+                exp := exp - 896;
+                mantissa := shift_right(mantissa, 1);
+            elsif (to_integer(exp) > 1150) then
+                exp := (others=> '1');
+            else 
+                exp := (others=> '0');
+                mantissa := (others => '0');
+            end if;
+            
+        return f(63)& std_logic_vector(exp(7 downto 0)) & std_logic_vector(mantissa(22 downto 0));
+end function;
     -- Function to convert real to IEEE-754
     function real_to_float32(r : real) return std_logic_vector is
         variable exp : integer := 0;
@@ -123,125 +239,156 @@ architecture Behavioral of mac_tb is
            end loop;
         return sign * mantissa * 2.0 **exp ;--+(2.0**(-29)))
     end function;
+    
+    signal clk : std_logic := '0';
+        signal n_rst : std_logic := '0';
+        signal a, b,c : std_logic_vector(precision-1 downto 0);
+        signal result: std_logic_vector(63 downto 0);
+        signal ar_vec : std_logic_vector(31 downto 0);
+         signal a_delayed1, b_delayed1, c_delayed1,a_delayed, b_delayed, c_delayed : std_logic_vector(precision-1 downto 0);
+         signal expected : real :=0.0;
+         signal abr,ar,cr,br, ulp : real;
+--        shared variable abr,ar,cr,br, ulp : real;
 begin
     -- Clock generation
     clk <= not clk after 5 ns;
     
     -- DUT instantiation
     DUT: entity work.MAC
-        generic map(precision => 32, 
-                 precision64  => 64,
-                 ex_width  => 8,
-                 man_width => 23,
-                 cut  => 11,
-                 offset  => 0)
             Port map( a  => a,
                    b  => b,
                    c  => c,
                    clk  => clk , n_rst  => n_rst,
-                   sum  => result);
+                   sumout  => result);
         
     
     -- Test process
+    
+    input : process(result,ar_vec)
+        variable seed1, seed2: positive := 1;
+        variable a1,b1,c1 : std_logic_vector(31 downto 0):= (others=>'0');
+    begin 
+    
+        if is_x(result) then
+                   ar_vec <= (others => '0');
+                   abr <= 0.0;  -- Initialize to zero if result contains X or U
+               else
+                   ar_vec <= float_64_to_32(result);
+                   abr <= float32_to_real(ar_vec(31 downto 0));
+               end if;
+   end process; 
+  pipeline_track: process(clk)
+       begin
+           if rising_edge(clk) then
+               if n_rst = '0' then
+                   a_delayed <= (others => '0');
+                   b_delayed <= (others => '0');
+                   c_delayed <= (others => '0');
+                   expected <= 0.0;
+               else
+                   -- Store current inputs for next cycle comparison
+                   a_delayed <= a;
+                   b_delayed <= b;
+                   c_delayed <= c;
+
+                   -- Calculate expected result using delayed values
+                   if not is_x(a_delayed) and not is_x(b_delayed) and not is_x(c_delayed) then
+                       expected <= float32_to_real(a_delayed) * float32_to_real(b_delayed) + 
+                                        float32_to_real(c_delayed);
+                   end if;
+               end if;
+           end if;
+       end process;
     process
-        variable abr,ar,cr,br, ulp, expected : real;
+        
+        variable ea,eb,ec,man1, man2,man3,s1,s2,s3: integer;
+        variable a1,b1,c1 : std_logic_vector(31 downto 0):= (others=>'0');
         variable actual_result : real;
         variable difference : real;
+        
         variable seed1, seed2: positive := 1;
         variable line_out: line;
         file output_file: text open write_mode is "MAC_results.txt";
         
     begin
+        a <= (others => '0');
+        b <= (others => '0'); 
+        c <= (others => '0');
         -- Reset
         n_rst <= '0';
         wait for 10 ns;
         n_rst <= '1';
+        
+        generate_aligned_random_vectors(seed1, seed2, a1,b1,c1);
         wait until rising_edge(clk);
-        a <= real_to_float32(5.0e31);
-        b <= real_to_float32(0.0);
-        c <= real_to_float32(0.1);
+        
+        a <= a1; b <= b1; c <= c1;
+                write(line_out, string'("Time first input: " & time'image(now)));
+                writeline(output_file, line_out);
         wait until rising_edge(clk);
-        a <= real_to_float32(5.0e31);
-        b <= real_to_float32(3.0);
-        c <= real_to_float32(0.0);
---        for m in 0 to 3 loop                    
---                    -- Run multiple test cases per mode
---                    for i in 1 to 100 loop
---                        generate_random_vector(seed1, seed2, ar);
---                        generate_random_vector(seed1, seed2, br);
---                        generate_random_vector(seed1, seed2, cr);                        
---                        a <= real_to_float32(ar);
---                        b <= real_to_float32(br);
---                        c <= real_to_float32(cr);
-                        
-                        
-                        
---                        wait until rising_edge(clk);
-----                        wait until rising_edge(clk);
-----                        wait until rising_edge(clk);
---                        ulp:=2.0**(to_integer(unsigned(ar_vec(precision-2 downto man_width)))-(man_width-3));
---                        expected := ar*br + cr;
---                        abr := float32_to_real(result);
---                        ar_vec <= real_to_float32(expected);
---                        -- Log results
---                        if (abs(expected - abr))<ulp then
---                            write(line_out, string'("success "));
---                            write(line_out, i);
---                            writeline(output_file, line_out);
---                        else
---                            write(line_out, string'("failure "));
---                            write(line_out, i);
---                            writeline(output_file, line_out);          
---                        end if;      
---                        write(line_out, string'("a:= " & real'image(ar)));
---                        writeline(output_file, line_out);
-                                           
---                        write(line_out, string'("b:= " & real'image(br)));
---                        writeline(output_file, line_out);
-                        
---                        write(line_out, string'("abr:= " &  real'image(abr)));
---                        writeline(output_file, line_out);    
-                        
---                        write(line_out, string'("expected:= " &  real'image(expected)));
---                        writeline(output_file, line_out);                    
-                        
---                        write(line_out, string'("a: "));
---                        write(line_out,to_bitvector (a));
---                        writeline(output_file, line_out);
-                        
---                        write(line_out, string'("b: "));
---                        write(line_out, to_bitvector (b));
---                        writeline(output_file, line_out);
-                        
---                        write(line_out, string'("actual  : "));
---                        write(line_out, to_bitvector (result));
---                        writeline(output_file, line_out);
-                        
---                        write(line_out, string'("expected: "));
---                        write(line_out, to_bitvector (ar_vec));
---                        writeline(output_file, line_out);
+        generate_aligned_random_vectors(seed1, seed2, a1,b1,c1);
+        a <= a1; b <= b1; c <= c1;
+        write(line_out, string'("Time second input: " & time'image(now)));
+        writeline(output_file, line_out);
+        wait until rising_edge(clk);
+        write(line_out, string'("Time: " & time'image(now)));
+        writeline(output_file, line_out);
+     -- Run multiple test cases per mode
+        for i in 1 to 1000000 loop
+            generate_aligned_random_vectors(seed1, seed2, a1,b1,c1);
+            a <= a1; b <= b1; c <= c1;
+            write(line_out, string'("clock at: " & time'image(now)));
+            writeline(output_file, line_out);
 
---                    end loop;
---                end loop;
-----        -- Test cases
---        ar := -1.0037234e30;
---        br:= -1.1359606e30;
---        a <= real_to_float32(-1.0037234e38);
---        b <= real_to_float32(-1.1359606e38);
---        expected := ar+br;
---        wait for 1 ns;
---        abr := float32_to_real(result);
---        write(line_out, string'("single values: "));
---        write(line_out, string'("a: " & real'image(ar) & "b: " & real'image(br) &  "abr: " & real'image(abr)  & "expected : "&  real'image(expected)));
---        writeline(output_file, line_out);
+            
+            
+            write(line_out, string'("a:= " & real'image(float32_to_real(a_delayed))));
+            writeline(output_file, line_out);
+                    
+            write(line_out, string'("b:= " & real'image(float32_to_real(b_delayed))));
+            writeline(output_file, line_out);
+            write(line_out, string'("c:= " & real'image(float32_to_real(c_delayed))));
+                        writeline(output_file, line_out);
+             
+            wait for 1 ns;
+            if (abs(expected - abr)) < 2.0**(-23) then      -- Use fixed ULP for FP32
+                            write(line_out, string'("success "));
+                            write(line_out, i);
+                            writeline(output_file, line_out);
+                        else
+                            write(line_out, string'("failure "));
+                            write(line_out, i);
+                            writeline(output_file, line_out);          
+                        end if;      
+            write(line_out, string'("actual:= " &  real'image(abr)));
+            writeline(output_file, line_out);    
+                                    
+            write(line_out, string'("expected:= " &  real'image(expected)));
+            writeline(output_file, line_out);                    
 
-        wait for 10 ns;
---        assert unsigned(result(precision-2 downto man_width)) < 255 report "overflow" severity failure;
---        expected := 2.5 + 3.3;--exp_width-1.5;
---        --actual_result := float32_to_real(result(precision-1 downto 0));
---        difference := abs(expected - abr);
---        --assert error < 0.001 report "Test failed!" severity note;
---        assert difference < 0.001 report "Test failed! Error: " & real'image(difference) severity ERROR;
+            write(line_out, string'("a: "));
+            write(line_out,to_string (a));
+            writeline(output_file, line_out);
+
+            write(line_out, string'("b: "));
+            write(line_out, to_string (b));
+            writeline(output_file, line_out);
+
+            write(line_out, string'("c: "));
+            write(line_out, to_string (c));
+            writeline(output_file, line_out);
+
+            write(line_out, string'("actual FP32 : "));
+            write(line_out, to_string (ar_vec));
+            writeline(output_file, line_out);
+            writeline(output_file, line_out);
+            wait until rising_edge(clk);
+--            write(line_out, string'("Timenew: " & time'image(now)));
+
+        end loop;
+--        
+        wait until rising_edge(clk);
+--        
         -- Add more test cases
         
         wait;

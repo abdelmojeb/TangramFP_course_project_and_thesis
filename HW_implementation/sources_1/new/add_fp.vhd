@@ -46,14 +46,13 @@ attribute keep : string;
 
     constant add : std_logic:= '0' ;
     constant sub : std_logic:= '1' ;
-    signal operation : std_logic := '0';
+    signal operation : std_logic;
     signal exp_a,exp_b, exp_ab, exp_ab_r: unsigned(precision-man_width-2 downto 0):= (others => '0');
     signal man_a, man_b,man_b_aligned,man_a_aligned  : unsigned(man_width downto 0):= (others => '0');
     signal man_add_a, man_add_b, man_sub_a,man_sub_b : unsigned(man_width downto 0):= (others => '0');
     signal man_ab_add,man_ab_sub : unsigned(man_width+1 downto 0):= (others => '0');
     signal man_result : unsigned(man_width-1 downto 0):= (others => '0');
     signal cin, bin : unsigned(man_width downto 0):= (others => '0');
-    signal shift : integer range 0 to 64;
     signal sign_a, sign_b, sign_ab: std_logic;
     signal temp_result : unsigned(man_width+1 downto 0):= (others =>'0');
     signal  shift_count : natural range 0 to 54 := 0;
@@ -189,23 +188,6 @@ attribute keep : string;
                     );
         end generate;
    --determine leading zero in mantissa
-   ----------------------------------------------     
---    process(operation, man_ab_sub)
---    begin
---    if (operation = sub and man_ab_sub = to_unsigned(0, man_ab_sub'length)) then
---        shift_count <= 0;
---    else
---        for i in 0 to man_width+1 loop
---            if man_ab_sub(man_width+1-i) = '1' then
---                  shift_count <= i;
---                  exit;
---            else 
---                shift_count <= 0;
---            end if;
---        end loop;
---    end if;
---    end process;
-
     LZC: lzc_54
         Port map (
             mantissa => man_lZC_input,
@@ -240,13 +222,6 @@ lzc_zeros:    process (man_ab_sub, operation, shift_vec)
             if (man_ab_sub = to_unsigned(0, man_ab_sub'length)) then
                 temp_result <= (others => '0');
             else
---                for i in 0 to man_width+1 loop
---                    if man_ab_sub(man_width+1-i) = '1' then
---                        shift_count <= i;
---                        exit;
---                    end if;
---                end loop;
-                -- Normalize the mantissa by left-shifting it
                 temp_result <= shift_left(man_ab_sub, shift_count);
             end if;
         else

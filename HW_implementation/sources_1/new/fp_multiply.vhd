@@ -32,7 +32,7 @@ use IEEE.NUMERIC_STD.ALL;
 --use UNISIM.VComponents.all;
 
 entity fp_mult is
-generic (width : integer := 24; cut : integer := 11);
+generic (width : integer range 8 to 32 := 24; cut : integer range 1 to 16 := 11);
     Port ( 
            clk : in STD_LOGIC;
            n_rst : in STD_LOGIC;
@@ -56,51 +56,37 @@ architecture Behavioral of fp_mult is
                 mantissa : out std_logic_vector(2*width-1 downto 0)
             );
     end component;
---signal sign_a, sign_b, sign_ab : std_logic;
---signal exp_a, exp_b : std_logic_vector(7 downto 0);
---signal exp_ab : std_logic_vector(10 downto 0):=(others=>'0');
---signal mantissa_a, mantissa_b : std_logic_vector(23 downto 0);
+
 signal mantissa_ab : std_logic_vector(47 downto 0);
---signal mantissa_ab_norm : std_logic_vector(51 downto 0);
-attribute keep : string;
-attribute keep of  mantissa_ab_norm : signal   is "true";
+
 begin
 kacy_mult : kacy_32_mult 
             generic map (
-                 width => 24,
+                 width => width,
                  cut  => cut)
             port map (
---                  clk=>clk,
---                  n_rst=>n_rst,
+
                   u=>mantissa_a, v=>mantissa_b,
                   mode=>mode,
                   mantissa=>mantissa_ab);
 
-
-    
-    
---    result <= sign_ab&exp_ab & mantissa_ab_norm;
     
     --normalization of the result
-    process(clk)--,n_rst,mantissa_ab
+    process(clk)
         begin
         if rising_edge(clk) then
             if (n_rst = '0' or dnt_mult = '1')then
                 mantissa_ab_norm <= (others => '0');
                 exp_ab <= (others=>'0');
            else
-           
                if (mantissa_ab(47)= '1') then
                     mantissa_ab_norm <= mantissa_ab(46 downto 0) & "00000";
                     exp_ab <= exp_ab_in + to_unsigned(1,11);
                elsif mantissa_ab(46) = '1' then
                     mantissa_ab_norm <= mantissa_ab(45 downto 0) & "000000";
                     exp_ab <=  exp_ab_in;
---              elsif(mantissa_ab(47)= '0' and mantissa_ab(46)= '0')then
---                    exp_ab <= (others => '0');-- std_logic_vector(resize(unsigned(exp_a),11)+ resize(unsigned(exp_b),11) + to_unsigned(769,11));
---                    mantissa_ab_norm <= mantissa_ab & "0000";
               else 
-                    exp_ab <= (others => '0');-- std_logic_vector(resize(unsigned(exp_a),11)+ resize(unsigned(exp_b),11) + to_unsigned(769,11));
+                    exp_ab <= (others => '0');
                     mantissa_ab_norm <= (others => '0');    
               end if;
           end if; 

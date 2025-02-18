@@ -10,7 +10,6 @@ entity DaddaMultiplier is
         a : in std_logic_vector(n - 1 downto 0);
         b : in std_logic_vector(n - 1 downto 0);
         is_signed : in std_logic;
-        -- result : out std_logic_vector(2 * n - 1 downto 0)
         orow1 : out std_logic_vector(2 * n - 1 downto 0);
         orow2 : out std_logic_vector(2 * n - 1 downto 0)
         );
@@ -55,7 +54,8 @@ begin
             end loop;
         end loop;
 
-        -- add correction bits                                   -- floating point multiplication doesn't need to handle sign here
+        -- add correction bits                                 
+          -- floating point multiplication doesn't need to handle sign here
         dot(0)(n, dotCount(n)) <= is_signed;
         dotCount(n) := dotCount(n) + 1;
         dot(0)(2 * n - 1, dotCount(2 * n - 1)) <= is_signed;
@@ -150,8 +150,6 @@ begin
     orow1 <= row1 & dot(stages)(0, 0);
     orow2 <= row2 & '0';
 
-    -- adder_output <= row1 + row2;
-    -- result(0) <= dot(stages)(0, 0);
-    -- result(2 * n - 1 downto 1) <= adder_output(2 * n - 1 downto 1);
+
 
 end Dadda_arch;

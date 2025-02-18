@@ -11,13 +11,11 @@ entity kacy_32_mult is
         --p: integer := 12
     );
     port(
---        Clk : in std_logic;
---        n_rst : in std_logic;
+
         u : in std_logic_vector(width-1 downto 0);
         v : in std_logic_vector(width-1 downto 0);
         mode : in std_logic_vector(1 downto 0);
         mantissa : out std_logic_vector(2*width-1 downto 0)
-        -- dis : out std_logic_vector(cut+1 downto 0)
     );
 end kacy_32_mult;
 
@@ -30,7 +28,6 @@ architecture kacy_mul_arch of kacy_32_mult is
                 a : in std_logic_vector(n-1 downto 0); -- 5
                 b : in std_logic_vector(n-1 downto 0); -- 5
                 is_signed : in std_logic;
-                -- result : out std_logic_vector(2*n-1  downto 0)
                 orow1 : out std_logic_vector(2*n-1 downto 0); -- 10
                 orow2 : out std_logic_vector(2*n-1 downto 0)  -- 10
             );
@@ -95,14 +92,6 @@ architecture kacy_mul_arch of kacy_32_mult is
 
     signal is_signed : std_logic := '0';
 
---    signal row0 : std_logic_vector(2*width-2 downto 0); -- 21
---    signal row1 : std_logic_vector(2*width-2 downto 0); -- 21
---    signal row2 : std_logic_vector(2*width-2 downto 0); -- 21
---    signal row3 : std_logic_vector(2*width-2 downto 0); -- 21
---    signal row4 : std_logic_vector(2*width-2 downto 0); -- 21
---    signal row5 : std_logic_vector(2*width-2 downto 0); -- 21
-
-    -- signal res2 : std_logic_vector(2*width-1 downto 0); -- 22
 
     signal ac_e : std_logic;
     signal ad_e : std_logic;
@@ -123,7 +112,6 @@ architecture kacy_mul_arch of kacy_32_mult is
     signal final_csa_z : std_logic_vector(2*width-1 downto 0);
 
     signal dffman : std_logic_vector(2*width-1 downto 0);
-    -- signal dffdis : std_logic_vector(cut+1 downto 0);
 
 begin
 
@@ -264,63 +252,13 @@ begin
         s => res
         );
 
---    final_csa_x <= csa_ac_puv_c & csa_ac_puv_s & bd;--(2*cut-1 downto 2*cut-5); -- 1+25+22
---    final_csa_y <= std_logic_vector(TO_UNSIGNED(0, cut)) & csa_bc_ad_c & csa_bc_ad_s & std_logic_vector(TO_UNSIGNED(0, cut));--11+1+25+11
---    final_csa_z <= '0' & (x and y) & std_logic_vector(TO_UNSIGNED(0, 2*(p+cut))); --1<<46
-result:    process(mode, bd,csa_ac_puv_s,csa_bc_ad_s,x,y,csa_ac_puv_c,csa_bc_ad_c)
-    begin
-        if (mode=FULL_COMPUTE) then--full
-            final_csa_x <= csa_ac_puv_c & csa_ac_puv_s & bd;--(2*cut-1 downto 2*cut-5); -- 1+25+22
-            final_csa_y <= std_logic_vector(TO_UNSIGNED(0, cut)) & csa_bc_ad_c & csa_bc_ad_s & std_logic_vector(TO_UNSIGNED(0, cut));--11+1+25+11
-            final_csa_z <= '0' & (x and y) & std_logic_vector(TO_UNSIGNED(0, 2*(p+cut))); --1<<46
-        
-        elsif(mode=SKIP_BD)then--skip BD
-            final_csa_x <= csa_ac_puv_c & csa_ac_puv_s & std_logic_vector(to_unsigned(0,22));
-            final_csa_y <= std_logic_vector(TO_UNSIGNED(0, cut)) & csa_bc_ad_c & csa_bc_ad_s & std_logic_vector(TO_UNSIGNED(0, cut));
-            final_csa_z <= '0' & (x and y) & std_logic_vector(TO_UNSIGNED(0, 2*(p+cut))); 
-       
-        elsif(mode = AC_ONLY)then -- AC only
-            final_csa_x <= csa_ac_puv_c & csa_ac_puv_s & std_logic_vector(to_unsigned(0,22));
-            final_csa_y <= (others => '0');--11+1+25+11
-            final_csa_z <= '0' & (x and y) & std_logic_vector(TO_UNSIGNED(0, 2*(p+cut))); 
-        else
-            final_csa_x <= (others => '0');
-            final_csa_y <= (others => '0');
-            final_csa_z <= (others => '0');
-       end if;
-    end process;
-    dffman <= res(2*width-1 downto 0);
-    -- dffdis <= res(17) & res(5 downto 0);
+   final_csa_x <= csa_ac_puv_c & csa_ac_puv_s & bd;--(2*cut-1 downto 2*cut-5); -- 1+25+22
+   final_csa_y <= std_logic_vector(TO_UNSIGNED(0, cut)) & csa_bc_ad_c & csa_bc_ad_s & std_logic_vector(TO_UNSIGNED(0, cut));--11+1+25+11
+   final_csa_z <= '0' & (x and y) & std_logic_vector(TO_UNSIGNED(0, 2*(p+cut))); --1<<46
 
---    process(Clk) -- output register
---    begin
---        if(falling_edge(Clk)) then -- originally rising_edge
---            if(n_rst = '0') then
---                mantissa <= (others => '0');
---                -- dis <= (others => '0');
---            else
---                mantissa <= dffman;
---                -- dis <= dffdis;
---            end if;
---        end if;
---    end process;
+    dffman <= res(2*width-1 downto 0);
+
 mantissa <= dffman;-----------------------output
-    --- reduction phase with adder tree
-    -- ac(2*cut-1 downto 0) <= ac_row1 + ac_row2;
-    -- bc(2*cut-1 downto 0) <= bc_row1 + bc_row2;
-    -- ad(2*cut-1 downto 0) <= ad_row1 + ad_row2;
-    -- bd(2*cut-1 downto 0) <= bd_row1 + bd_row2;
-    -- row0 <= '0' & ac & bd;
-    -- row1 <= '0' & (2*width-3 downto cut*3 => '0') &
-    --          ad & (cut-1 downto 0 => '0');
-    -- row2 <= '0' & (2*width-3 downto cut*3 => '0') &
-    --          bc & (cut-1 downto 0 => '0');
-    -- row3 <= '0' & pu & (2*cut-1 downto 0 => '0');
-    -- row4 <= '0' & pv & (2*cut-1 downto 0 => '0');
-    -- row5 <= (x and y) & (2*width-3 downto 0 => '0');
-    -- res2 <= '0' & ((row0 + row1) +
-    --                (row2 + row3) +
-    --                (row4 + row5));
-    -- result <= res2(2*width-1 downto 2*cut+1); -- [21:11]
+   
 
 end kacy_mul_arch;
