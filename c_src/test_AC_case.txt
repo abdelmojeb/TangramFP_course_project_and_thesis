@@ -1,0 +1,395 @@
+typedef unsigned int uint;
+typedef unsigned short ushort;
+
+uint as_uint(const float x) { return *(uint *)&x; }
+float as_float(const uint x) { return *(float *)&x; }
+
+float half_to_float(const ushort x) {
+    /* IEEE-754 16-bit floating-point
+       format (without infinity):
+       1-5-10, exp-15, +-131008.0,
+       +-6.1035156E-5, +-5.9604645E-8,
+       3.311 digits */
+    const uint e = (x&EXP_MASK)>>10; // exponent
+    const uint m = (x&0x03FF)<<13;   // mantissa
+    const uint v = as_uint((float)m)>>23; // evil log2 bit hack to count
+                                          // leading zeros in denormalized format
+    return as_float((x&0x8000)<<16 | (e!=0)*((e+112)<<23|m) | \
+                    ((e==0)&(m!=0))*((v-37)<<23|((m<<(150-v))&0x007FE000)));
+           // sign : normalized : denormalized
+}
+
+ushort float_to_half(const float x) {
+    /* IEEE-754 16-bit floating-point
+       format (without infinity):
+       1-5-10, exp-15, +-131008.0,
+       +-6.1035156E-5, +-5.9604645E-8,
+       3.311 digits */
+    const uint b = as_uint(x)+0x00001000; // round-to-nearest-even:
+                                          // add last bit after truncated mantissa
+    const uint e = (b&0x7F800000)>>23;    // exponent
+    const uint m = b&0x007FFFFF; /* mantissa; in line below:
+                                    0x007FF000 = 0x00800000-0x00001000 =
+                                    decimal indicator flag - initial rounding */
+    return (b&0x80000000)>>16 | (e>112)*((((e-112)<<10)&EXP_MASK)|m>>13) | \
+           ((e<113)&(e>101))*((((0x007FF000+m)>>(125-e))+1)>>1) |          \
+           (e>143)*0x7FFF; // sign : normalized : denormalized : saturate
+}
+
+
+#include <stdio.h>
+#include <stdint.h>
+#include <wmmintrin.h>
+#include <assert.h>
+
+#include "../include/kacy32.h"
+#include "../include/profiler.h"
+
+#define MAN_FULL         0x17 //0x0B
+
+#define FULL_X_Y         0x01
+#define AC_PLUS_X_Y      0x02
+#define AC_LITE_X_Y      0x03
+
+#define FULL_1_X_Y       0x11
+#define SKIP_BD_1_X_Y    0x12
+#define AC_ONLY_1_X_Y    0x13
+
+#define SKIP             0xFF
+
+#define TANG_X_Y         0x00
+#define TANG_1_X_Y       0x10
+
+
+
+
+
+uint64_t kacy_mul_core_1_X_Y(uint32_t u, uint32_t v, short mode, short cut) {
+
+    assert(((u & 0xFFFFFF)!=0) && ((v & 0xFFFFFF)!=0));
+    PRINT2("mode", mode, "cut", cut);
+
+    short p,q;
+    uint64_t x, y, _u, _v, a, b, c, d;
+    q = cut; p = MAN_FULL-cut;
+    x = (u & 0x800000) >> MAN_FULL; 
+    y = (v & 0x800000) >> MAN_FULL;
+    _u = u & 0x7FFFFF; _v = v & 0x7FFFFF;
+    b = u & ((1 << q) - 1);
+    d = v & ((1 << q) - 1);
+
+    if (mode == FULL_1_X_Y){
+        a = _u >> q; c = _v >> q;
+        return (x*y << 2*(p+q)) +
+               (_u << (p+q)) + (_v << (p+q)) + //p + q = 12 + 11 = 23
+               (a*c << q*2) +
+               ((a*d + c*b) << q) +
+               b*d;
+
+    } else if (mode == SKIP_BD_1_X_Y){
+        a = _u >> q; c = _v >> q;
+        return (x*y << 2*(p+q)) +
+               (_u << (p+q)) + (_v << (p+q)) +
+               (a*c << q*2) +
+               ((a*d + c*b) << q);
+
+    } else if (mode == AC_ONLY_1_X_Y) {
+        a = (_u >> q) + RTE(u, q);
+        c = (_v >> q) + RTE(u, q);
+        return (x*y << 2*(p+q)) +
+               (_u << (p+q)) + (_v << (p+q)) +
+               (a*c << q*2);
+
+    } else {
+        KACY_PANIC("");
+    }
+
+    KACY_PANIC("Bang.")
+}
+
+double kacy_fp32_mult(uint32_t a, uint32_t b, short mode, short cut) {
+    // Do only one time of alignment
+    union {
+        uint64_t i;
+        double f;
+    } converter_64;
+    union {
+        uint32_t i;
+        float f;
+    } converter_32;
+
+    int64_t sign_ab = (a ^ b) & SIGN_MASK; // 32th bit
+
+    ushort32 am = MANTISSA(a);
+    ushort32 bm = MANTISSA(b);
+
+    uint64_t ab_v = 0;
+
+    if (__builtin_expect(((mode & 0xF0) == 0x00),0)) {
+        ab_v = kacy_mul_core_1_X_Y(am, bm, mode, cut);
+    } else if (__builtin_expect(((mode & 0xF0) == 0x10),1)) {
+        ab_v = kacy_mul_core_1_X_Y(am, bm, mode, cut);
+    } else {
+        KACY_PANIC("WRONG MODE")
+    }
+
+    int ax = EXPONENT(a);
+    int bx = EXPONENT(b);
+    assert (ax != 0);
+    assert (bx != 0);
+
+    int64_t ab_exp = ax + bx - 127;
+
+    PRINT3("ax", ax, "bx", bx, "ab_exp", ab_exp);
+
+
+    if (ab_v & ((uint64_t)1<<47)) { // allignment of result
+        ab_v <<= 5;
+        ab_exp += 897;
+    } else if (ab_v & ((uint64_t)1<<46)) {
+        ab_v <<= 6;
+        ab_exp += 896;
+    }
+
+    PRINT2("ab_exp", ab_exp, "av_v", ab_v);
+
+  
+    converter_64.i = ((sign_ab << 32) | (ab_exp << 52) | (ab_v & 0xFFFFFFFFFFFFF));
+    return converter_64.f;
+}
+
+
+double kacy_f32_main(double* _a, double* _b, double _sum, short size,
+                    short tangram,  /* 0x10 */
+                    short preb,     /* 11 */
+                    short offset) { /* 0 */
+
+    PRINT1("kacy_f32_main", 0);
+
+    assert (tangram == TANG_1_X_Y);
+
+    ushort32 sum = double_to_float(_sum);
+
+    if (IS_INVALID(sum)) {
+        if (IS_NAN(sum)){
+            printf("_sum : %f, sum : %d \n", _sum, sum);
+            KACY_PANIC("SUM_NAN");
+            /* return float_to_double(NAN_VALUE); */
+        }
+        printf("_sum : %f, sum : %d \n", _sum, sum);
+        KACY_PANIC("SUM_INF");
+        /* return float_to_double(1 | EXP_MASK); /
+           \* always return +infinity *\/ */
+    }
+
+    if (IS_SUBNORMAL(sum))
+        sum = 0;
+
+    int sumx = EXPONENT(sum);
+
+    /* calculate the mode of each a*b pair */
+
+    ushort32 a[size]; /* binary representation */
+    ushort32 b[size];
+    char zs[size];  /* pos for zero in a or b */
+
+    for (int i=0; i<size; i++)
+        zs[i] = 0;
+
+    int max_exp = sumx; /* assume first sumx is max */
+    sumx += (sumx==0);
+    int exp[size];
+
+    for (int i = 0; i < size; i++) {
+
+        PRINT3f("a[i]", _a[i], "b[i]", _b[i], "psum", _sum);
+
+        a[i] = double_to_float(_a[i]);
+        b[i] = double_to_float(_b[i]);
+
+        if (IS_INVALID(a[i]) || IS_INVALID(b[i])) {
+            if (IS_NAN(a[i]) || IS_NAN(b[i])){
+                printf("i: %d\n", i);
+                for (int i=0; i<size; i++){
+                    printf("_a[i] : %f, a[i] : %d \n", _a[i], a[i]);
+                    printf("_b[i] : %f, b[i] : %d \n", _b[i], b[i]);
+                }
+                KACY_PANIC("AB_NAN");
+                /* return float_to_double(NAN_VALUE); */
+            }
+            printf("i: %d\n", i);
+            for (int i=0; i<size; i++){
+                printf("_a[i] : %f, a[i] : %d \n", _a[i], a[i]);
+                printf("_b[i] : %f, b[i] : %d \n", _b[i], b[i]);
+            }
+            KACY_PANIC("AB_INF")
+            /* return float_to_double(1 | EXP_MASK); */
+        }
+
+        if (IS_ZERO(a[i]) || IS_ZERO(b[i])){
+            PRINT1("AB_ZERO", 0);
+            da_sample_bc(DA_ZS);
+            zs[i] = 1;
+        }
+
+        if (IS_SUBNORMAL(a[i])) {
+            PRINT1("A_SUB", 0);
+            da_sample_bc(DA_ZS);
+            a[i] = 0;
+            zs[i] = 1;
+        }
+
+        if (IS_SUBNORMAL(b[i])){
+            PRINT1("B_SUB", 0);
+            da_sample_bc(DA_ZS);
+            b[i] = 0;
+            zs[i] = 1;
+        }
+
+        int ax = EXPONENT(a[i]);
+        ax += (ax==0);
+        int bx = EXPONENT(b[i]);
+        bx += (bx==0);
+        exp[i] = ax + bx - 127;
+
+        
+        if (max_exp <= exp[i]){
+            max_exp = exp[i];}
+        
+    }
+
+
+    short thrd_1 = preb + offset;
+    short thrd_2 = MAN_FULL;
+    double c = 0.0;
+
+    for (int i=0;  i<size; i++) {
+
+        if (zs[i]) continue;
+
+        int exp_diff = max_exp - exp[i];
+        da_sample_bin(exp_diff);
+
+        if (exp_diff < 0){
+            PRINT2("MINUS mode", FULL_1_X_Y, "exp_diff", exp_diff);
+            c += _a[i] * _b[i];
+            da_sample_bc(DA_MINUS);
+        } else if (exp_diff == 0) {
+            PRINT2("FULL mode", FULL_1_X_Y, "exp_diff", exp_diff);
+            da_sample_bc(DA_FULL);
+            c += kacy_fp32_mult(a[i], b[i],
+                              FULL_1_X_Y,
+                              preb);
+        } else if (exp_diff > 0 && exp_diff < thrd_1) {
+            PRINT2("Skip BD mode", SKIP_BD_1_X_Y, "exp_diff", exp_diff);
+            da_sample_bc(DA_SKIP_BD);
+            c += kacy_fp32_mult(a[i], b[i],
+                              SKIP_BD_1_X_Y,
+                              preb);
+        } else if (exp_diff >= thrd_1 && exp_diff < thrd_2) {
+            PRINT2("AC only mode", AC_ONLY_1_X_Y, "exp_diff", exp_diff);
+            da_sample_bc(DA_AC_ONLY);
+            c += kacy_fp32_mult(a[i], b[i],
+                              AC_ONLY_1_X_Y,
+                              preb);
+        } else if (exp_diff >= thrd_2) {
+            PRINT2("exp_diff > 11, skip mode", SKIP, "exp_diff", exp_diff);
+            da_sample_bc(DA_SKIP_ALL);
+            c += 0;
+        } else {
+            KACY_PANIC("Wrong MODE in TANG_1_X_Y");
+        }
+    }
+
+    return c += _sum;
+}
+
+/* kacy16.c ends here */
+uint32_t kacy_mul_core_1_X_Y(short u, short v, short mode, short cut) {
+
+    assert(((u & 0x7FF)!=0) && ((v & 0x7FF)!=0));
+    PRINT2("mode", mode, "cut", cut);
+
+    uint32_t x, y, _u, _v, a, b, c, d;
+
+    x = (u & 0x400) >> 10; y = (v & 0x400) >> 10;
+    _u = u & 0x3FF; _v = v & 0x3FF;
+    b = u & ((1 << cut) - 1);
+    d = v & ((1 << cut) - 1);
+
+    if (mode == FULL_1_X_Y){
+        a = _u >> cut; c = _v >> cut;
+        return (x*y << 20) +
+               (_u << cut*2) + (_v << cut*2) +
+               (a*c << cut*2) +
+               ((a*d + c*b) << cut) +
+               b*d;
+
+    } else if (mode == SKIP_BD_1_X_Y){
+        a = _u >> cut; c = _v >> cut;
+        return (x*y << 20) +
+               (_u << cut*2) + (_v << cut*2) +
+               (a*c << cut*2) +
+               ((a*d + c*b) << cut);
+
+    } else if (mode == AC_ONLY_1_X_Y) {
+        a = (_u >> cut) + RTE(u, cut);
+        c = (_v >> cut) + RTE(u, cut);
+        return (x*y << 20) +
+               (_u << cut*2) + (_v << cut*2) +
+               (a*c << cut*2);
+
+    } else {
+        KACY_PANIC("");
+    }
+
+    KACY_PANIC("Bang.")
+}
+
+float kacy_fp16_mult(short a, short b, short mode, short cut) {
+    // Do only one time of alignment
+    union {
+        uint32_t i;
+        float f;
+    } converter;
+
+    int sign_ab = (a ^ b) & SIGN_MASK; // 16th bit
+
+    ushort am = MANTISSA(a);
+    ushort bm = MANTISSA(b);
+    printf("a=%#04x, b=%#04x, am=%#04x, bm=%#04x \n", a, b, am, bm);
+
+    uint32_t ab_v = 0;
+
+    if (__builtin_expect(((mode & 0xF0) == 0x00),0)) {
+        ab_v = kacy_mul_core_1_X_Y(am, bm, mode, cut);
+    } else if (__builtin_expect(((mode & 0xF0) == 0x10),1)) {
+        ab_v = kacy_mul_core_1_X_Y(am, bm, mode, cut);
+    } else {
+        KACY_PANIC("WRONG MODE")
+    }
+
+    int ax = EXPONENT(a);
+    int bx = EXPONENT(b);
+    assert (ax != 0);
+    assert (bx != 0);
+
+    int ab_exp = ax + bx - 15;
+
+    PRINT3("ax", ax, "bx", bx, "ab_exp", ab_exp);
+
+
+    if (ab_v & ((uint32_t)1<<21)) { // allignment of result
+        ab_v <<= 2;
+        ab_exp += 113;
+    } else if (ab_v & ((uint32_t)1<<20)) {
+        ab_v <<= 3;
+        ab_exp += 112;
+    }
+
+    PRINT2("ab_exp", ab_exp, "av_v", ab_v);
+
+    converter.i = ((sign_ab << 16) | (ab_exp << 23) | (ab_v & 0x7FFFFF));
+
+    return converter.f;
+}

@@ -100,7 +100,7 @@ double ulp_difference(double actual, double expected) {
     if (isinf(actual) || isinf(expected)) return DBL_MAX;
     
     double ulp = ulp_size(expected);
-    return fabs(actual - expected) / ulp;
+    return fabs(fabs(actual) - fabs(expected)) / ulp;
 }
 
 // Function to generate test value in different ranges
@@ -219,6 +219,9 @@ void generate(float *a, float *b, float *sum) {
         *sum = converters.f;
 }
 void run_mac_tests(int num_tests, int cut, int offset) {
+    FILE *fptr;
+// Open a file in writing mode
+fptr = fopen("test_results1.txt", "w");
     int error_count = 0;
     double total_ulp_error = 0.0;
     double max_ulp_error = 0.0;
@@ -285,36 +288,36 @@ void run_mac_tests(int num_tests, int cut, int offset) {
         }
         total_ulp_error += ulp_error;
         if (ulp_error > max_ulp_error) {
-            max_ulp_error = ulp_error;
-            if (ulp_error >= 0.50) {  // Log errors larger than 1 ULP
+            max_ulp_error = ulp_error;}
+            if (ulp_error >= 1) {  // Log errors larger than 1 ULP
                 error_count++;
-                printf("\nmode: %s, exponent diff: %d\n", mode, exp_diff);
-                printf("Test %d - ULP Error: %.2f\n", test, ulp_error);
-                printf("Expected double: %.17g \n", expected_result);
-                printf("Expected float: %.17g \n", a*b+sum);
-                printf("Actual  : %.17g \n", actual_result);
-                printf("Sample inputs that caused large error:\n");
-                printf("a=%.23g , b=%.23g, sum=%.23g\n", a_d, b_d,sum_d);
+                fprintf(fptr, "\nmode: %s, exponent diff: %d\n", mode, exp_diff);
+                fprintf(fptr, "Test %d - ULP Error: %.2f\n", test, ulp_error);
+                fprintf(fptr,"Expected double: %.17g \n", expected_result);
+                fprintf(fptr,"Expected float: %.17g \n", a*b+sum);
+                fprintf(fptr,"Actual  : %.17g \n", actual_result);
+                fprintf(fptr,"Sample inputs that caused large error:\n");
+                fprintf(fptr,"a=%.23g , b=%.23g, sum=%.23g\n", a, b,sum);
             }
-        }
+        // }
     
     }
     // Print summary statistics
-    printf("\nTest Summary:\n");
-    printf("Number of tests: %d\n",num_tests);
+    fprintf(fptr,"\nTest Summary:\n");
+    fprintf(fptr,"Number of tests: %d\n",num_tests);
     //printf("Vector length per test: %d\n", num_tests);
-    printf("Maximum ULP error: %.2f\n", max_ulp_error);
-    printf("Average ULP error: %.2f\n", total_ulp_error / num_tests);
-    printf("Number of errors >0.5 ULP: %d\n", error_count);
-    printf("modes : Full=%d Skip_bd=%d OnlyAC=%d skip=%d\n", full_mode_count,
+    fprintf(fptr,"Maximum ULP error: %.2f\n", max_ulp_error);
+    fprintf(fptr,"Average ULP error: %.2f\n", total_ulp_error / num_tests);
+    fprintf(fptr,"Number of errors >0.5 ULP: %d\n", error_count);
+    fprintf(fptr,"modes : Full=%d Skip_bd=%d OnlyAC=%d skip=%d\n", full_mode_count,
                     skip_bd_mode_count,skip_adbc_mode_count, skip_mode_count);
-    printf("ULP per modes\n : ulp_Full = %2.5g \nulp_Skip_bd = %2.5g \nulp_OnlyAC = %2.5g \nulp_skip = %2.5g\n", ulp_full/full_mode_count,
+    fprintf(fptr,"ULP per modes\n : ulp_Full = %2.5g \nulp_Skip_bd = %2.5g \nulp_OnlyAC = %2.5g \nulp_skip = %2.5g\n", ulp_full/full_mode_count,
                     ulp_skip_bd,ulp_AC_only/skip_adbc_mode_count, ulp_skip/skip_mode_count);
     // Categorize errors
-    printf("\nError distribution:\n");
-    printf("0-0.5 ULP   : %.7g%%\n", 100.0 * (num_tests - error_count) / num_tests);
-    printf(">0.5 ULP    : %.7g%%\n", 100.0 * ((float)error_count / num_tests));
-    
+    fprintf(fptr,"\nError distribution:\n");
+    fprintf(fptr,"0-0.5 ULP   : %.7g%%\n", 100.0 * (num_tests - error_count) / num_tests);
+    fprintf(fptr,">0.5 ULP    : %.7g%%\n", 100.0 * ((float)error_count / num_tests));
+    fclose(fptr);
 
 }
 
