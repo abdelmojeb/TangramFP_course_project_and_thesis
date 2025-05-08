@@ -13,6 +13,7 @@ package tools is
 	function dots_left(dots, add, target : natural) return natural;
 	function float_32_to_64 (f : std_logic_vector(31 downto 0))return std_logic_vector;
 	function float_64_to_32 (f : std_logic_vector(63 downto 0)) return std_logic_vector;
+	function float_to_half (f : std_logic_vector(31 downto 0))return std_logic_vector;
 	function choose_width(p, q : integer) return integer;
 end;
 
@@ -128,10 +129,17 @@ package body tools is
            variable exp :unsigned(10 downto 0) := unsigned(f(62 downto 52));
            variable mantissa : unsigned (24 downto 0) :=  '0'& unsigned(f(51 downto 28)) +1;
            begin
-               if (to_integer(exp) < 873)then 
+               if exp = "11111111111" then
+                   if mantissa /= 0 then
+                       -- NaN
+                       mantissa := (others => '1'); -- or preserve upper mantissa bits
+                   else
+                       -- Infinity
+                       mantissa := (others => '0');
+                   end if;
+               elsif (to_integer(exp) < 873)then 
                    exp := (others=> '0');
                    mantissa := (others => '0');
-               
                elsif (to_integer(exp) > 872 and to_integer(exp) < 897)then
                    report integer'image(to_integer(mantissa));
                    mantissa := mantissa + to_unsigned(16777215,25);
@@ -141,7 +149,7 @@ package body tools is
                    mantissa := shift_right(mantissa, 1);
                    report integer'image(to_integer(mantissa));
                    exp := (others=> '0');
-               elsif (to_integer(exp) > 896)then
+               elsif (to_integer(exp) > 896 and to_integer(exp) <= 1150)then
                    exp := exp - 896;
                    mantissa := shift_right(mantissa, 1);
                elsif (to_integer(exp) > 1150) then
@@ -153,7 +161,45 @@ package body tools is
                
            return f(63)& std_logic_vector(exp(7 downto 0)) & std_logic_vector(mantissa(22 downto 0));
    end function;
-   
+   --float to half
+    function float_to_half (f : std_logic_vector(31 downto 0))
+       return std_logic_vector is
+           variable v : integer := 1023;
+           variable exp :unsigned(7 downto 0) := unsigned(f(30 downto 23));
+           variable mantissa : unsigned (11 downto 0) :=  '0'& unsigned(f(22 downto 12)) +1;
+           begin
+               if exp = "11111111" then
+               if mantissa /= 0 then
+                   -- NaN
+                   mantissa := (others => '1'); -- or preserve upper mantissa bits
+               else
+                   -- Infinity
+                   mantissa := (others => '0');
+               end if;
+               elsif (to_integer(exp) < 102)then 
+                   exp := (others=> '0');
+                   mantissa := (others => '0');
+               elsif (to_integer(exp) > 101 and to_integer(exp) < 113)then
+                   report integer'image(to_integer(mantissa));
+                   mantissa := mantissa + to_unsigned(v,10);
+                   report integer'image(to_integer(mantissa));
+                   mantissa := shift_right(mantissa, (125 - to_integer(exp))) +1;
+                   report integer'image(to_integer(mantissa));
+                   mantissa := shift_right(mantissa, 1);
+                   report integer'image(to_integer(mantissa));
+                   exp := (others=> '0');
+               elsif (to_integer(exp) > 112 and to_integer(exp) < 143)then
+                   exp := exp - 112;
+                   mantissa := shift_right(mantissa, 1);
+               elsif (to_integer(exp) >= 143) then
+                   exp := (others=> '1');
+               else 
+                   exp := (others=> '0');
+                   mantissa := (others => '0');
+               end if;
+               
+           return f(31)& std_logic_vector(exp(4 downto 0)) & std_logic_vector(mantissa(9 downto 0));
+       end function;
       function choose_width(p, q : integer) return integer is
    begin
        if p >= q then
