@@ -1,0 +1,43 @@
+{
+   "ActiveEmotionalView":"Default View",
+   "Default View_ScaleFactor":"0.634961",
+   "Default View_TopLeft":"260,-140",
+   "ExpandedHierarchyInLayout":"",
+   "PinnedBlocks":"/processing_system7_0|/axi_dma_0|",
+   "PinnedPorts":"DDR|FIXED_IO|",
+   "guistr":"# # String gsaved with Nlview 7.5.8 2022-09-21 7111 VDI=41 GEI=38 GUI=JA:10.0
+#  -string -flagsOSRD
+preplace port DDR -pg 1 -lvl 6 -x 2090 -y 30 -defaultsOSRD
+preplace port FIXED_IO -pg 1 -lvl 6 -x 2090 -y 60 -defaultsOSRD
+preplace inst processing_system7_0 -pg 1 -lvl 3 -x 980 -y 440 -defaultsOSRD
+preplace inst axi_dma_0 -pg 1 -lvl 2 -x 470 -y 360 -defaultsOSRD
+preplace inst system_ila_0 -pg 1 -lvl 5 -x 1830 -y 60 -defaultsOSRD
+preplace inst ps7_0_axi_periph -pg 1 -lvl 5 -x 1830 -y 650 -defaultsOSRD
+preplace inst rst_ps7_0_50M -pg 1 -lvl 3 -x 980 -y 210 -defaultsOSRD
+preplace inst axi_mem_intercon -pg 1 -lvl 5 -x 1830 -y 370 -defaultsOSRD
+preplace inst SysA_interface_pipe1_0 -pg 1 -lvl 4 -x 1470 -y 10 -defaultsOSRD
+preplace netloc SysA_interface_pipe1_0_Store0 1 4 1 1670 10n
+preplace netloc SysA_interface_pipe1_0_Transfer0 1 4 1 1660 30n
+preplace netloc processing_system7_0_FCLK_CLK0 1 1 4 300 230 730 70 1300 -110 1650
+preplace netloc processing_system7_0_FCLK_RESET0_N 1 2 2 750 80 1210
+preplace netloc processing_system7_0_GPIO_O 1 3 2 1330J 120 1630
+preplace netloc rst_ps7_0_50M_peripheral_aresetn 1 1 4 270 60 NJ 60 1320J 140 1680
+preplace netloc SysA_interface_0_m00_axis 1 1 4 290 -90 N -90 N -90 1680
+preplace netloc axi_dma_0_M_AXIS_MM2S 1 2 3 640J 50 1280 -80 1670
+preplace netloc axi_dma_0_M_AXI_MM2S 1 2 3 660J 100 NJ 100 1640
+preplace netloc axi_dma_0_M_AXI_S2MM 1 2 3 650J 90 1220J 130 1610
+preplace netloc axi_dma_0_M_AXI_SG 1 2 3 670J 110 NJ 110 1620
+preplace netloc axi_mem_intercon_M00_AXI 1 2 4 740 -130 NJ -130 NJ -130 1980
+preplace netloc processing_system7_0_DDR 1 3 3 1310J -100 N -100 2000
+preplace netloc processing_system7_0_FIXED_IO 1 3 3 NJ 410 1630 190 2000
+preplace netloc processing_system7_0_M_AXI_GP0 1 3 2 NJ 490 1610
+preplace netloc ps7_0_axi_periph_M00_AXI 1 1 5 280 -120 NJ -120 NJ -120 NJ -120 1990
+levelinfo -pg 1 0 20 470 980 1470 1830 2090
+pagesize -pg 1 -db -bbox -sgen -100 -340 2290 1240
+"
+}
+{
+   "da_axi4_cnt":"18",
+   "da_clkrst_cnt":"4",
+   "da_ps7_cnt":"2"
+}

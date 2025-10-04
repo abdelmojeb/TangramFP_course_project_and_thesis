@@ -5,7 +5,7 @@
             "name": "Debug",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}\\c_src\\main.exe",
+            "program": "${workspaceFolder}\\ATES_course\\c_src\\main.exe",
             "args": ["3"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
