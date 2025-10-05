@@ -18,3 +18,4 @@ when computation starts A columns and the column exponents are directed to the s
 - Mode select unit is in file MODES_OP2_PIPE2.vhd
 - Systolic array stream unit is in SysA_stream_pipe1.vhd
 - Systolic array interface and control in SysA_interface_pipe1_1packet.vhd
+- const1_248_16.xdc constraint file is used when synthesizing the accelerator alone in the block design
