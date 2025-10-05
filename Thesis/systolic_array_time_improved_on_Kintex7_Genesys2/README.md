@@ -13,8 +13,8 @@ then waits for signal to receive new A or if busy signal is low it can receive n
 - storing and transfering output is seperated from the state machine to operate whenever result is ready
 A is stored in the top level while W is directed immediately to the systlic entity.
 when computation starts A columns and the column exponents are directed to the systolic array and the mode selection unit module respectively each clock cycle
--The implemented block design is in bd folder, it might not be portable but the design is exported to design_1.tcl. It contains  integrating the systolic array accelerator IP to a SoC disign on Zynq7000. the operational clock for the accelerator is 30MHz.
-- TangramFP files are in the TangramFP_MAC folder.
-- Mode select unit is in file modes_op2_pipe1.vhd
+-The implemented block design is in bd folder, it might not be portable but the design is exported to design_1microblaze_kintex7.tcl. It contains  integrating the systolic array accelerator IP to a SoC disign on Kintex7. Since Kintex is not a SoC device a softcore Microblaze is used. the operational clock for the accelerator is 30MHz.
+- TangramFP files are in the TangramFP_MAC_time_improved folder.
+- Mode select unit is in file MODES_OP2_PIPE2.vhd
 - Systolic array stream unit is in SysA_stream_pipe1.vhd
 - Systolic array interface and control in SysA_interface_pipe1_1packet.vhd
